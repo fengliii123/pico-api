@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pico API — Privacy Policy</title>
+  <meta name="description" content="Privacy policy for the Pico API Chrome extension.">
+  <style>
+    :root {
+      --bg: #ffffff;
+      --bg-subtle: #f6f8fa;
+      --text: #0f172a;
+      --text-muted: #475569;
+      --border: #e2e8f0;
+      --brand: #00B894;
+      --brand-soft: #d1fae5;
+      --mono: 'SF Mono', 'Menlo', 'Consolas', monospace;
+      --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f172a;
+        --bg-subtle: #1e293b;
+        --text: #e2e8f0;
+        --text-muted: #94a3b8;
+        --border: #334155;
+        --brand: #2EE6C2;
+        --brand-soft: #134e4a;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 56px 24px 96px;
+    }
+    header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 24px;
+      margin-bottom: 32px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+    .brand-mark {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      background: var(--brand);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 900;
+      font-size: 16px;
+    }
+    .updated {
+      color: var(--text-muted);
+      font-size: 13px;
+      margin-top: 4px;
+    }
+    h1 {
+      font-size: 32px;
+      letter-spacing: -0.02em;
+      margin: 32px 0 8px;
+    }
+    h2 {
+      font-size: 22px;
+      letter-spacing: -0.01em;
+      margin: 40px 0 12px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+    h3 {
+      font-size: 16px;
+      margin: 24px 0 8px;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    p { margin: 12px 0; }
+    a { color: var(--brand); }
+    hr { display: none; }
+    code {
+      font-family: var(--mono);
+      background: var(--bg-subtle);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.92em;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 16px 0;
+      font-size: 14px;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    th {
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--bg-subtle);
+    }
+    ul, ol { padding-left: 24px; }
+    li { margin: 6px 0; }
+    .callout {
+      background: var(--brand-soft);
+      border-left: 3px solid var(--brand);
+      padding: 14px 18px;
+      border-radius: 4px;
+      margin: 24px 0;
+    }
+    .callout p { margin: 0; }
+    strong { font-weight: 600; }
+    footer {
+      margin-top: 64px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <span class="brand-mark">P</span>
+        <span>Pico API</span>
+      </div>
+      <div class="updated">Privacy Policy · Last updated 2026-07-08</div>
+    </header>
+
+    <h1>Privacy Policy</h1>
+
+    <p>Pico API ("the extension", "we", "us") is a developer tool that runs entirely inside your browser. This policy explains what data the extension accesses, how it is stored, and the choices you control.</p>
+
+    <div class="callout">
+      <p><strong>TL;DR.</strong> The extension <strong>does not collect, transmit, or sell any personal data</strong>. Every piece of data it reads — saved requests, folders, environments, history, captured traffic, settings — is stored <strong>locally</strong> in your browser profile via IndexedDB and <code>chrome.storage</code>. Nothing leaves your machine except the HTTP requests you explicitly send to the URLs you typed in.</p>
+    </div>
+
+    <h2>1. Data the extension stores locally</h2>
+    <p>All of the following live in your browser's own storage (IndexedDB on the extension's origin, plus <code>chrome.storage.local</code> for settings). They are not synced to any server and are not accessible to websites you visit.</p>
+    <table>
+      <thead>
+        <tr><th>Data</th><th>Where</th><th>Purpose</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Saved folders and requests</td><td>IndexedDB</td><td>Lets you build a reusable API collection</td></tr>
+        <tr><td>Request drafts</td><td>IndexedDB</td><td>The request you're currently editing</td></tr>
+        <tr><td>Response history (capped)</td><td>IndexedDB</td><td>"Resend" / time-travel over recent responses</td></tr>
+        <tr><td>Environments and variables</td><td>IndexedDB</td><td>Variable substitution (<code>{{baseUrl}}</code>)</td></tr>
+        <tr><td>App settings (theme, locale)</td><td><code>chrome.storage.local</code></td><td>Remembers your UI preferences</td></tr>
+        <tr><td>Captured network requests</td><td>In-memory only (transient)</td><td>Shown live while you capture; cleared on extension reload</td></tr>
+      </tbody>
+    </table>
+    <p>Captured network requests are kept in the service worker's memory and are never written to disk. They vanish when the service worker is suspended or the browser is closed.</p>
+    <p>To wipe all local data: open the extension's Settings → "Data backup / restore" → "Erase all data". You can also remove the extension entirely from <code>chrome://extensions</code>, which deletes everything stored on the extension's origin.</p>
+
+    <h2>2. Data the extension reads from the page</h2>
+
+    <h3>2.1 Network traffic (only when you start a capture)</h3>
+    <p>The capture feature uses the <code>chrome.debugger</code> API. <strong>It only runs while you have explicitly clicked "Start Capture" on a specific tab</strong>, and stops the instant you click "Stop Capture", close the tab, or the service worker suspends. While capturing, the extension observes HTTP requests and responses made by that tab and shows them in the side panel so you can replay them.</p>
+    <p>The captured data:</p>
+    <ul>
+      <li>is <strong>never sent to any server</strong>,</li>
+      <li>is <strong>never written to disk</strong> (in-memory only),</li>
+      <li>is <strong>scoped to the tab you selected</strong>,</li>
+      <li>disappears when the capture session ends.</li>
+    </ul>
+    <p>While the debugger is attached, Chrome shows a banner reading "<strong>Pico API is debugging this browser</strong>". This banner is added by Chrome itself, not by the extension, and is removed as soon as the capture stops.</p>
+
+    <h3>2.2 Cookies (only when you opt in per-request)</h3>
+    <p>When you toggle "Send browser cookies" on a request, the extension uses <code>chrome.cookies.getAll()</code> to read cookies the browser has stored for the target URL and injects them as a <code>Cookie</code> header on that one outgoing request. This lets you call APIs that depend on a browser session without leaving the extension. The toggle is <strong>off by default</strong> and must be enabled per request. The extension never modifies, sets, or deletes cookies.</p>
+
+    <h3>2.3 URLs you type</h3>
+    <p>When you send a request, the extension makes an HTTP call from the service worker directly to the URL you entered. The request body, headers, and any response received are processed locally to render the response panel. They are not logged, tracked, or transmitted anywhere else.</p>
+
+    <h2>3. Permissions and why each is needed</h2>
+    <table>
+      <thead><tr><th>Permission</th><th>Why it's needed</th></tr></thead>
+      <tbody>
+        <tr><td><code>storage</code></td><td>Persist your collection, environments, and settings locally</td></tr>
+        <tr><td><code>cookies</code></td><td>Optional cookie injection for authenticated APIs (off by default)</td></tr>
+        <tr><td><code>sidePanel</code></td><td>The main UI is hosted in the Chrome side panel</td></tr>
+        <tr><td><code>debugger</code></td><td>Network capture (only while you have started a capture on a tab)</td></tr>
+        <tr><td><code>host_permissions: &lt;all_urls&gt;</code></td><td>You can test any API endpoint; the extension makes no background network calls of its own</td></tr>
+      </tbody>
+    </table>
+    <p>The extension makes <strong>no background network requests</strong> of its own. Every outbound HTTP call is one you explicitly triggered by clicking Send.</p>
+
+    <h2>4. Third parties</h2>
+    <p>The extension does not load any third-party scripts, does not use analytics, does not embed advertising, and does not call any external API. There are no external service dependencies.</p>
+
+    <h2>5. Children's privacy</h2>
+    <p>The extension is a developer tool and is not directed at children under 13. We do not knowingly collect any data from anyone, regardless of age.</p>
+
+    <h2>6. Changes to this policy</h2>
+    <p>Material changes will be reflected by updating the "Last updated" date at the top of this document and bumping the extension version number.</p>
+
+    <h2>7. Contact</h2>
+    <p>For privacy questions or data-removal requests, open an issue on the extension's GitHub repository (linked from the Chrome Web Store listing) or from the extension's Settings → Feedback link.</p>
+
+    <footer>
+      Pico API is a Chrome extension. This privacy policy is part of the submission materials kept in the project's open-source repository under <code>store/PRIVACY.md</code>.
+    </footer>
+  </div>
+</body>
+</html>
