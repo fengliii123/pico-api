@@ -145,7 +145,7 @@
         <span class="brand-mark">P</span>
         <span>Pico API</span>
       </div>
-      <div class="updated">Privacy Policy · Last updated 2026-07-08</div>
+      <div class="updated">Privacy Policy · Last updated 2026-07-12</div>
     </header>
 
     <h1>Privacy Policy</h1>
@@ -153,11 +153,11 @@
     <p>Pico API ("the extension", "we", "us") is a developer tool that runs entirely inside your browser. This policy explains what data the extension accesses, how it is stored, and the choices you control.</p>
 
     <div class="callout">
-      <p><strong>TL;DR.</strong> The extension <strong>does not collect, transmit, or sell any personal data</strong>. Every piece of data it reads — saved requests, folders, environments, history, captured traffic, settings — is stored <strong>locally</strong> in your browser profile via IndexedDB and <code>chrome.storage</code>. Nothing leaves your machine except the HTTP requests you explicitly send to the URLs you typed in.</p>
+      <p><strong>TL;DR.</strong> The extension <strong>does not collect, transmit, or sell any personal data</strong>. Every piece of data it reads — saved requests, folders, environments, history, captured traffic, settings — is stored <strong>locally</strong> in your browser profile via IndexedDB and <code>localStorage</code>. Nothing leaves your machine except the HTTP requests you explicitly send to the URLs you typed in.</p>
     </div>
 
     <h2>1. Data the extension stores locally</h2>
-    <p>All of the following live in your browser's own storage (IndexedDB on the extension's origin, plus <code>chrome.storage.local</code> for settings). They are not synced to any server and are not accessible to websites you visit.</p>
+    <p>All of the following live in your browser's own storage (IndexedDB on the extension's origin, plus <code>localStorage</code> for settings). They are not synced to any server and are not accessible to websites you visit.</p>
     <table>
       <thead>
         <tr><th>Data</th><th>Where</th><th>Purpose</th></tr>
@@ -167,7 +167,7 @@
         <tr><td>Request drafts</td><td>IndexedDB</td><td>The request you're currently editing</td></tr>
         <tr><td>Response history (capped)</td><td>IndexedDB</td><td>"Resend" / time-travel over recent responses</td></tr>
         <tr><td>Environments and variables</td><td>IndexedDB</td><td>Variable substitution (<code>{{baseUrl}}</code>)</td></tr>
-        <tr><td>App settings (theme, locale)</td><td><code>chrome.storage.local</code></td><td>Remembers your UI preferences</td></tr>
+        <tr><td>App settings (theme, locale)</td><td><code>localStorage</code></td><td>Remembers your UI preferences</td></tr>
         <tr><td>Captured network requests</td><td>In-memory only (transient)</td><td>Shown live while you capture; cleared on extension reload</td></tr>
       </tbody>
     </table>
@@ -197,7 +197,6 @@
     <table>
       <thead><tr><th>Permission</th><th>Why it's needed</th></tr></thead>
       <tbody>
-        <tr><td><code>storage</code></td><td>Persist your collection, environments, and settings locally</td></tr>
         <tr><td><code>cookies</code></td><td>Optional cookie injection for authenticated APIs (off by default)</td></tr>
         <tr><td><code>sidePanel</code></td><td>The main UI is hosted in the Chrome side panel</td></tr>
         <tr><td><code>debugger</code></td><td>Network capture (only while you have started a capture on a tab)</td></tr>
