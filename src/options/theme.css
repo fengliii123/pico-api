@@ -1,0 +1,399 @@
+/* Design tokens.
+ *
+ * Light + dark variants selected by `data-theme` on the root <html>.
+ * Components reference these via `var(--bg-base)` etc.
+ *
+ * Migration policy: existing hard-coded hex values are replaced by these
+ * tokens as we touch each component, so the dark mode ships incrementally
+ * without one big-bang refactor. Tokens cover the most-used categories:
+ *   - bg-*     backgrounds (page / surface / muted)
+ *   - border-* borders (subtle / strong)
+ *   - text-*   text (primary / secondary / tertiary)
+ *   - accent-* primary brand color + tints
+ *   - status-* success / warning / danger
+ *   - space-*  spacing scale (4px base, 8px grid)
+ *   - fs-*     font-size scale (1px increments, hairline → display)
+ *   - radius-* corner radii
+ *   - ease-*   standard easings + durations for motion
+ */
+
+:root,
+:root[data-theme="light"] {
+  /* Backgrounds — slight cool-white tint gives the page more depth than flat #fff.
+     --bg-subtle is intentionally one step darker so the sidebar reads as a
+     distinct panel rather than blending into the main column. */
+  --bg-base: #ffffff;        /* primary surface */
+  --bg-subtle: #f7f8fa;      /* sidebar / muted areas */
+  --bg-muted: #f3f5f8;       /* hover, even rows */
+  --bg-overlay: #fffbe6;     /* warnings, "GET doesn't carry a body" banner */
+
+  /* Borders — softened so 1px hairlines don't look like blueprint gridlines */
+  --border-base: #eceef2;    /* hairlines */
+  --border-strong: #dfe3ea;  /* input borders, card edges */
+  --border-input: #d4d8e0;   /* input border default */
+
+  /* Text — bumped for AA contrast on pure white */
+  --text-primary: #1f2733;
+  --text-secondary: #51596a;
+  --text-tertiary: #8b93a4;
+  --text-on-accent: #ffffff;
+
+  /* Accent — Pico brand teal. Aligned with --pico-brand below so all hand-written
+     var(--accent) references and AntD's colorPrimary speak the same color. */
+  --accent: #00C9A7;
+  --accent-hover: #06D6A0;
+  --accent-soft-bg: #E0FAF3;
+  --accent-soft-fg: #009B82;
+
+  /* Code surface — distinct cool-gray panel for response body / code blocks.
+     One full step darker than --bg-muted so the code area reads as a
+     recessed "terminal-like" surface rather than blending with the page. */
+  --code-bg: #eef1f5;
+  --code-toolbar-bg: #e3e7ee;
+  --code-border: #d4dae3;
+
+  /* Status */
+  --status-success: #389e0d;
+  --status-success-bg: #f6ffed;
+  --status-warning: #faad14;
+  --status-warning-bg: #fffbe6;
+  --status-warning-fg: #874d00;
+  --status-danger: #ff4d4f;
+  --status-danger-bg: #fff1f0;
+
+  /* Tab badges */
+  --badge-mode-bg: #f0f0f0;
+  --badge-mode-fg: #595959;
+
+  /* Code */
+  --code-key: #1d4ed8;
+  --code-value: #374151;
+
+  /* Status-tag token (for status tags) */
+  --tag-info-bg: #e6f4ff;
+  --tag-info-fg: #0958d9;
+  --tag-success-bg: #f6ffed;
+  --tag-success-fg: #389e0d;
+  --tag-warning-bg: #fffbe6;
+  --tag-warning-fg: #d46b08;
+  --tag-danger-bg: #fff1f0;
+  --tag-danger-fg: #cf1322;
+
+  /* Cookie flag pills */
+  --cookie-httponly-bg: #fff7e6;
+  --cookie-httponly-fg: #d46b08;
+  --cookie-secure-bg: #e6fffb;
+  --cookie-secure-fg: #08979c;
+  --cookie-default-bg: #f0f0f0;
+  --cookie-default-fg: #595959;
+}
+
+/* ----- Design tokens: spacing / typography / motion / radius -----
+ * Theme-independent: same numbers in light / dark / eye.
+ */
+:root {
+  /* Spacing scale — 4px base unit, 8px grid */
+  --space-0: 0;
+  --space-1: 2px;   /* hairline — icon internal padding */
+  --space-2: 4px;   /* tight — between related icons */
+  --space-3: 6px;   /* default button group gap */
+  --space-4: 8px;   /* base — most padding */
+  --space-5: 12px;  /* comfortable — section gaps */
+  --space-6: 16px;  /* generous — card padding */
+  --space-7: 20px;  /* section to section */
+  --space-8: 24px;  /* large */
+  --space-9: 32px;  /* extra large */
+
+  /* Font-size scale — 11px (mono detail) → 18px (page title) */
+  --fs-xs: 11px;    /* timestamp / mono detail */
+  --fs-sm: 12px;    /* secondary text / labels */
+  --fs-base: 13px;  /* body */
+  --fs-md: 14px;    /* primary actions / titles */
+  --fs-lg: 16px;    /* section headers */
+  --fs-xl: 18px;    /* page titles */
+
+  /* Font weights — limited palette for consistency */
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+
+  /* Radii */
+  --radius-sm: 3px;
+  --radius-base: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-full: 9999px;
+
+  /* Motion */
+  --ease-fast: 120ms cubic-bezier(0.4, 0, 0.2, 1);   /* hover, press */
+  --ease-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);  /* panels, modals */
+  --ease-slow: 320ms cubic-bezier(0.4, 0, 0.2, 1);    /* major transitions */
+
+  /* Shadows — layered for depth. Slight brand-tinted halo on md/lg so
+     floating panels feel tied to the brand rather than generic gray. */
+  --shadow-xs: 0 1px 1px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.12);
+  --shadow-brand: 0 6px 18px rgba(0, 201, 167, 0.25);
+
+  /* Layout — sidebar etc. */
+  --sidebar-width: 280px;
+  --header-height: 48px;
+
+  /* Focus ring — brand-tinted so keyboard nav feels connected to the primary color */
+  --focus-ring: 0 0 0 3px var(--pico-brand-glow);
+}
+
+/* Reset typography defaults so the scale tokens aren't fighting the UA. */
+body, html {
+  font-size: var(--fs-base);
+  line-height: 1.5;
+}
+
+/* Focus-visible ring — keyboard navigation only, never on mouse click. */
+*:focus {
+  outline: none;
+}
+*:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-base);
+  transition: box-shadow var(--ease-fast);
+}
+
+/* Smooth hover transitions on interactive elements. */
+button, a, [role="button"], .ant-btn, .ant-tag {
+  transition: background-color var(--ease-fast),
+              border-color var(--ease-fast),
+              color var(--ease-fast),
+              transform var(--ease-fast),
+              box-shadow var(--ease-fast);
+}
+
+/* Subtle press feedback for clickable cards / rows. */
+button:active:not(:disabled),
+.ant-btn:active:not(:disabled) {
+  transform: translateY(0.5px);
+}
+
+/* Entrance animation used by empty states. */
+@keyframes fade-rise {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Scrollbars — thin, theme-aware. Mostly invisible until hover; never
+   competing with content for attention. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: var(--radius-full);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+
+/* Text selection — brand-tinted highlight */
+::selection {
+  background: var(--accent-soft-bg);
+  color: var(--accent-soft-fg);
+}
+
+:root[data-theme="dark"] {
+  /* Backgrounds — lifted from AntD's standard dark surface palette */
+  --bg-base: #1f1f1f;
+  --bg-subtle: #161616;
+  --bg-muted: #2a2a2a;
+  --bg-overlay: #3d2e00;
+
+  /* Borders */
+  --border-base: #2e2e2e;
+  --border-strong: #3a3a3a;
+  --border-input: #424242;
+
+  /* Text */
+  --text-primary: #ececec;
+  --text-secondary: #a8a8a8;
+  --text-tertiary: #6f6f6f;
+  --text-on-accent: #08110d;
+
+  /* Accent — aligned with --pico-brand (teal) */
+  --accent: #2EE6C2;
+  --accent-hover: #5BF0D0;
+  --accent-soft-bg: #0E2A24;
+  --accent-soft-fg: #5BF0D0;
+
+  /* Code surface — slightly lifted dark with a hint of cool blue so it
+     reads as a terminal panel rather than just "darker background". */
+  --code-bg: #161a22;
+  --code-toolbar-bg: #1c2230;
+  --code-border: #2a3140;
+
+  /* Status */
+  --status-success: #49aa19;
+  --status-success-bg: #162312;
+  --status-warning: #d89614;
+  --status-warning-bg: #2b2111;
+  --status-warning-fg: #d89614;
+  --status-danger: #dc4446;
+  --status-danger-bg: #2a1215;
+
+  /* Tab badges */
+  --badge-mode-bg: #303030;
+  --badge-mode-fg: #a0a0a0;
+
+  /* Code */
+  --code-key: #69b1ff;
+  --code-value: #e6e6e6;
+
+  /* Status tags */
+  --tag-info-bg: #111b26;
+  --tag-info-fg: #69b1ff;
+  --tag-success-bg: #162312;
+  --tag-success-fg: #49aa19;
+  --tag-warning-bg: #2b2111;
+  --tag-warning-fg: #d89614;
+  --tag-danger-bg: #2a1215;
+  --tag-danger-fg: #dc4446;
+
+  /* Cookie flags */
+  --cookie-httponly-bg: #2b2111;
+  --cookie-httponly-fg: #d89614;
+  --cookie-secure-bg: #112123;
+  --cookie-secure-fg: #08979c;
+  --cookie-default-bg: #303030;
+  --cookie-default-fg: #a0a0a0;
+}
+
+/* ----- Eye-care theme -----
+ * Long-form reading/debugging palette — pale green/cream backgrounds with
+ * lower contrast text. Reduces eye strain for marathon sessions without
+ * going full dark-mode. Distinct from 'light' so users see the switch
+ * actually change something.
+ */
+:root[data-theme="eye"] {
+  /* Backgrounds — pale bean-soup greens */
+  --bg-base: #C7EDCC;
+  --bg-subtle: #D6E8D8;
+  --bg-muted: #B8DDBE;
+  --bg-overlay: #F5EBC8;
+
+  /* Borders */
+  --border-base: #A8CFAF;
+  --border-strong: #8BB895;
+  --border-input: #7BA685;
+
+  /* Text — desaturated forest greens */
+  --text-primary: #2E3F26;
+  --text-secondary: #4F6045;
+  --text-tertiary: #7E8C75;
+  --text-on-accent: #ffffff;
+
+  /* Accent — natural green */
+  --accent: #3D7A4F;
+  --accent-hover: #4E8C5F;
+  --accent-soft-bg: #B8DABB;
+  --accent-soft-fg: #2E5C3A;
+
+  /* Code surface — recessed darker green so the code area sits visually
+     "below" the eye-care page like an inset terminal. */
+  --code-bg: #B0CDB5;
+  --code-toolbar-bg: #A3C3A8;
+  --code-border: #8BB895;
+
+  /* Status */
+  --status-success: #4A7A2F;
+  --status-success-bg: #C5E0B4;
+  --status-warning: #B27A1A;
+  --status-warning-bg: #F5EBC8;
+  --status-warning-fg: #6E4B0A;
+  --status-danger: #A03A3C;
+  --status-danger-bg: #EBC8C8;
+
+  /* Tab badges */
+  --badge-mode-bg: #B8DABB;
+  --badge-mode-fg: #3F5234;
+
+  /* Code */
+  --code-key: #2E5C3A;
+  --code-value: #2E3F26;
+
+  /* Status tags */
+  --tag-info-bg: #B8DABB;
+  --tag-info-fg: #2E5C3A;
+  --tag-success-bg: #C5E0B4;
+  --tag-success-fg: #4A7A2F;
+  --tag-warning-bg: #F5EBC8;
+  --tag-warning-fg: #B27A1A;
+  --tag-danger-bg: #EBC8C8;
+  --tag-danger-fg: #A03A3C;
+
+  /* Cookie flags */
+  --cookie-httponly-bg: #F5EBC8;
+  --cookie-httponly-fg: #B27A1A;
+  --cookie-secure-bg: #C8E8E5;
+  --cookie-secure-fg: #2A7A82;
+  --cookie-default-bg: #B8DABB;
+  --cookie-default-fg: #4F6045;
+}
+
+/* ----- Brand tokens (Pico API) -----
+ *
+ * Dedicated brand palette that sits ON TOP of the theme tokens above.
+ * Use these for logo / splash / "send" CTA / brand accents. Existing
+ * `--accent-*` tokens stay defined by theme (they drive AntD); brand
+ * tokens are an independent layer so we can evolve the visual identity
+ * without forking the theme system.
+ *
+ * Same brand hue is preserved across light / dark / eye themes — only
+ * its surrounding palette shifts when (and if) we add a dark variant
+ * here. For now this block only defines the LIGHT brand palette; dark
+ * mode falls through to a slightly lifted version of the same teal.
+ */
+:root,
+:root[data-theme="light"] {
+  --pico-brand: #00C9A7;          /* primary cyan-teal */
+  --pico-brand-hover: #06D6A0;    /* hover state */
+  --pico-brand-active: #00B395;   /* pressed / active */
+  --pico-brand-soft-bg: #E0FAF3;  /* selected card / tag bg */
+  --pico-brand-soft-fg: #009B82;  /* text on soft-bg */
+  --pico-brand-deep: #006D5B;     /* monochrome logo on light bg */
+  --pico-brand-glow: rgba(0, 201, 167, 0.18); /* halo for focus / send glow */
+}
+
+:root[data-theme="dark"] {
+  --pico-brand: #2EE6C2;          /* slightly lifted for dark bg */
+  --pico-brand-hover: #5BF0D0;
+  --pico-brand-active: #26C9AA;
+  --pico-brand-soft-bg: #0E2A24;
+  --pico-brand-soft-fg: #5BF0D0;
+  --pico-brand-deep: #5BF0D0;     /* monochrome logo on dark bg */
+  --pico-brand-glow: rgba(46, 230, 194, 0.22);
+}
+
+:root[data-theme="eye"] {
+  /* Eye-care palette stays desaturated; brand hue warms slightly to
+   * match the green bean-soup background without losing recognisability. */
+  --pico-brand: #3D7A4F;
+  --pico-brand-hover: #4E8C5F;
+  --pico-brand-active: #356A43;
+  --pico-brand-soft-bg: #C5E0B4;
+  --pico-brand-soft-fg: #2E5C3A;
+  --pico-brand-deep: #2E5C3A;
+  --pico-brand-glow: rgba(61, 122, 79, 0.20);
+}

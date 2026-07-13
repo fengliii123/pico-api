@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "Pico API",
+  "short_name": "Pico",
+  "version": "1.0.0",
+  "version_name": "1.0.0",
+  "description": "A tiny REST client that lives in your Chrome side panel. Send requests, capture traffic, and debug APIs without leaving the tab.",
+  "minimum_chrome_version": "116",
+  "icons": {
+    "16": "icons/16.png",
+    "32": "icons/32.png",
+    "48": "icons/48.png",
+    "128": "icons/128.png"
+  },
+  "action": {
+    "default_title": "Open Pico API",
+    "default_icon": {
+      "16": "icons/16.png",
+      "32": "icons/32.png",
+      "48": "icons/48.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "permissions": ["storage", "cookies", "sidePanel", "debugger"],
+  "host_permissions": ["<all_urls>"],
+  "sandbox": {
+    "pages": ["sandbox.html"]
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
+}

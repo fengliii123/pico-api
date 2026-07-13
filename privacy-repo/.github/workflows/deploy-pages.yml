@@ -1,0 +1,52 @@
+# Publish the Pico API privacy policy to GitHub Pages.
+#
+# Trigger: any push to main that changes index.html or this workflow.
+# Published URL: https://<owner>.github.io/<repo>/
+#
+# One-time setup (do this once after pushing the repo to GitHub):
+#   1. Repo → Settings → Pages → "Build and deployment" → Source: "GitHub Actions"
+#   2. Push to main. The first run publishes the site.
+#   3. Paste the resulting URL into the Chrome Web Store developer dashboard's
+#      "Privacy Policy URL" field.
+
+name: Deploy privacy policy to Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - '.github/workflows/deploy-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Pages
+        uses: actions/configure-pages@v5
+      - name: Upload repo root as Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,44 @@
+Pico API — Proprietary Source Code Notice
+
+Copyright © 2026 Pico API. All rights reserved.
+
+This software and its source code are proprietary and confidential.
+Unauthorized copying, modification, merger, publication, distribution,
+sublicensing, and/or selling of this software, in whole or in part, is
+strictly prohibited.
+
+PERMITTED USES:
+
+  1. The compiled extension distributed via the Chrome Web Store may be
+     installed and used by end users according to the Chrome Web Store
+     Terms of Service.
+
+  2. The maintainer and explicitly authorized contributors may modify
+     the source code for the purpose of maintaining and improving the
+     Pico API extension.
+
+PROHIBITED USES:
+
+  1. Redistributing the source code, in original or modified form,
+     without prior written permission.
+
+  2. Reusing substantial portions of the source code in other projects,
+     whether open-source or commercial, without prior written permission.
+
+  3. Removing or altering this copyright notice or any proprietary
+     markings in the source code or built output.
+
+  4. Reverse engineering, decompiling, or otherwise attempting to derive
+     the source code from the published extension, except to the extent
+     expressly permitted by applicable law.
+
+NO WARRANTY. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+For licensing inquiries, contact the maintainer via the Chrome Web
+Store listing's support link.
