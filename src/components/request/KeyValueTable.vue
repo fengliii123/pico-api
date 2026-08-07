@@ -649,7 +649,7 @@ function onCellKeydown(e: KeyboardEvent, idx: number, col: 'key' | 'value') {
   border-bottom: 1px solid var(--border-base);
   background: var(--bg-base);
   transition: background-color 0.1s;
-  min-height: 44px;
+  min-height: 36px;
 }
 .kv-row:nth-child(even) { background: var(--bg-muted); }
 .kv-row:last-of-type { border-bottom: none; }

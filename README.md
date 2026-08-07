@@ -41,6 +41,14 @@ npm run dev      # local dev (loads into a normal browser tab)
 npm run build    # production build into dist/
 ```
 
+After `npm run dev`, open one of these URLs in your browser. The project
+root has no `index.html` — visiting `http://localhost:5173/` returns 404,
+you have to navigate to a specific entry:
+
+- Main UI:     <http://localhost:5173/src/options/index.html>
+- Side panel:  <http://localhost:5173/src/sidepanel/index.html>
+- Sandbox:     <http://localhost:5173/src/sandbox/index.html>
+
 ## Loading as extension
 
 1. `npm run build`

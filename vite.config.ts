@@ -15,8 +15,8 @@ function flattenEntryHtml(names: string[]): Plugin {
     apply: 'build',
     closeBundle() {
       for (const name of names) {
-        const srcPath = resolve(__dirname, `dist/src/${name}/index.html`)
-        const destPath = resolve(__dirname, `dist/${name}.html`)
+        const srcPath = resolve(import.meta.dirname, `dist/src/${name}/index.html`)
+        const destPath = resolve(import.meta.dirname, `dist/${name}.html`)
         if (!existsSync(srcPath)) continue
         let html = readFileSync(srcPath, 'utf-8')
         // Asset URLs come out as "../../assets/…" because the source HTML
@@ -27,7 +27,7 @@ function flattenEntryHtml(names: string[]): Plugin {
       }
       try {
         // Once all named entries have been lifted out, drop the src/ tree.
-        rmSync(resolve(__dirname, 'dist/src'), { recursive: true, force: true })
+        rmSync(resolve(import.meta.dirname, 'dist/src'), { recursive: true, force: true })
       } catch {
         // best-effort cleanup
       }
@@ -43,8 +43,8 @@ function copyPublic(): Plugin {
     name: 'copy-public',
     apply: 'build',
     writeBundle() {
-      const src = resolve(__dirname, 'public/manifest.json')
-      const dst = resolve(__dirname, 'dist/manifest.json')
+      const src = resolve(import.meta.dirname, 'public/manifest.json')
+      const dst = resolve(import.meta.dirname, 'dist/manifest.json')
       if (existsSync(src)) {
         writeFileSync(dst, readFileSync(src, 'utf-8'), 'utf-8')
       }
@@ -63,7 +63,7 @@ export default defineConfig({
   plugins: [vue(), flattenEntryHtml(['options', 'sidepanel', 'sandbox']), copyPublic()],
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src')
+      '@': resolve(import.meta.dirname, 'src')
     }
   },
   build: {
@@ -78,10 +78,10 @@ export default defineConfig({
     chunkSizeWarningLimit: 600,
     rollupOptions: {
       input: {
-        background: resolve(__dirname, 'src/background/index.ts'),
-        options: resolve(__dirname, 'src/options/index.html'),
-        sidepanel: resolve(__dirname, 'src/sidepanel/index.html'),
-        sandbox: resolve(__dirname, 'src/sandbox/index.html')
+        background: resolve(import.meta.dirname, 'src/background/index.ts'),
+        options: resolve(import.meta.dirname, 'src/options/index.html'),
+        sidepanel: resolve(import.meta.dirname, 'src/sidepanel/index.html'),
+        sandbox: resolve(import.meta.dirname, 'src/sandbox/index.html')
       },
       output: {
         entryFileNames: (chunk) =>

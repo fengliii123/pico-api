@@ -4,12 +4,11 @@
 //   - formdata: multipart/form-data with text or file rows
 //   - raw: free-form text with optional syntax mode (json / xml / text)
 import { computed, nextTick, ref } from 'vue'
-import { Input, Radio, Select, Button, Switch, message } from 'ant-design-vue'
+import { Input, Select, Button, Switch, message } from 'ant-design-vue'
 import { DeleteOutlined, FileOutlined, PlusOutlined, FormatPainterOutlined, CompressOutlined, CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons-vue'
 import KeyValueTable from './KeyValueTable.vue'
 import type {
   RequestBody,
-  KeyValueRow,
   BodyMode,
   RawType,
   FormDataRow
@@ -69,8 +68,8 @@ const rawType = computed({
   set: (v: RawType) => emit('update:modelValue', { ...props.modelValue, rawType: v })
 })
 
-function onRawTypeChange(v: unknown) {
-  rawType.value = v as RawType
+function onRawTypeChange(v: RawType) {
+  rawType.value = v
 }
 
 const rawText = computed({
@@ -80,7 +79,7 @@ const rawText = computed({
 
 const urlencodedRows = computed({
   get: () => props.modelValue.urlencoded ?? [],
-  set: (rows: KeyValueRow[]) => emit('update:modelValue', { ...props.modelValue, urlencoded: rows })
+  set: (rows) => emit('update:modelValue', { ...props.modelValue, urlencoded: rows })
 })
 
 const formdataRows = computed({
@@ -151,19 +150,26 @@ function onFileRemoved(idx: number) {
   formdataRows.value = next
 }
 
+function switchToFileRow(idx: number) {
+  const next = formdataRows.value.slice()
+  next[idx] = { ...next[idx], kind: 'file', file: null }
+  formdataRows.value = next
+}
+
+function switchToTextRow(idx: number) {
+  const next = formdataRows.value.slice()
+  next[idx] = { ...next[idx], kind: 'text', value: '', file: null, fileName: undefined, fileSize: undefined, fileType: undefined }
+  formdataRows.value = next
+}
+
 // Hidden <input type="file"> for each file row. We render it ourselves and
 // trigger it from a plain Button click, instead of going through AntD's
 // <Upload>, because the Upload's click delegation is unreliable in chrome
 // extension options pages (the click event on the inner Button sometimes
 // doesn't bubble to the Upload's handler).
 const fileInputRefs = ref<HTMLInputElement[]>([])
-function ensureFileInputRef(idx: number): HTMLInputElement {
-  // Vue's ref binding via :ref function-style gives us the actual element.
-  // We index into a plain array because there can be multiple file rows.
-  return fileInputRefs.value[idx]
-}
 function setFileInputRef(idx: number) {
-  return (el: any) => {
+  return (el: HTMLInputElement | null) => {
     if (el) fileInputRefs.value[idx] = el
   }
 }
@@ -257,6 +263,53 @@ function prettyXmlText() {
     message.error(fmt(t.value.cannotFormatXml, { reason: e?.message ?? t.value.invalidXml }))
   }
 }
+
+// JSON syntax highlighter for the raw editor overlay. Mirrors the
+// ResponseBodyRenderer implementation token-for-token (key/string/number/
+// keyword/punctuation) so request body and response body look identical.
+// We can't reuse CodeMirror here — @codemirror/lang-javascript's dist
+// bundle is corrupted on this machine (npm reinstall doesn't help —
+// some macOS-level process compresses the file), so we fall back to a
+// textarea + transparent overlay technique.
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+function highlightJsonLike(s: string): string {
+  const re = /("(?:\\.|[^"\\])*"\s*:?)|(\b(?:true|false)\b)|(\bnull\b)|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|([{}\[\],])/g
+  return escapeHtml(s).replace(re, (_m, str, bool, nul, num, punct) => {
+    if (str !== undefined) {
+      const isKey = /:\s*$/.test(str.replace(/&quot;/g, '"'))
+      return isKey
+        ? `<span class="tk-key">${str}</span>`
+        : `<span class="tk-str">${str}</span>`
+    }
+    if (bool !== undefined) return `<span class="tk-kw">${bool}</span>`
+    if (nul !== undefined) return `<span class="tk-kw">${nul}</span>`
+    if (num !== undefined) return `<span class="tk-num">${num}</span>`
+    if (punct !== undefined) return `<span class="tk-punc">${punct}</span>`
+    return _m
+  })
+}
+const highlightedRaw = computed(() => {
+  // XML / Text mode: no tokenization, just escape so the overlay shows
+  // the same text safely. JSON path uses the same highlighter as the
+  // response panel.
+  const text = rawText.value || ''
+  return rawType.value === 'json' ? highlightJsonLike(text) : escapeHtml(text)
+})
+
+// Keep the overlay scroll in sync with the textarea — they're stacked on
+// top of each other so any scroll offset must match.
+const rawOverlayRef = ref<HTMLPreElement | null>(null)
+const rawTextareaRef = ref<HTMLTextAreaElement | null>(null)
+function syncRawScroll() {
+  const ta = rawTextareaRef.value
+  const pre = rawOverlayRef.value
+  if (!ta || !pre) return
+  pre.scrollTop = ta.scrollTop
+  pre.scrollLeft = ta.scrollLeft
+}
+
 </script>
 
 <template>
@@ -290,11 +343,11 @@ function prettyXmlText() {
 
     <div v-else-if="mode === 'formdata'" class="body-mode-content">
       <div class="fd-header">
-        <span class="fd-header-toggle" />
-        <span class="fd-header-key">{{ t.fieldName }}</span>
-        <span class="fd-header-value">{{ t.value }}</span>
-        <span class="fd-header-action" />
-        <span class="fd-header-delete" />
+        <span />
+        <span>{{ t.fieldName }}</span>
+        <span>{{ t.value }}</span>
+        <span />
+        <span />
       </div>
       <div
         v-for="(row, idx) in formdataRows"
@@ -322,11 +375,7 @@ function prettyXmlText() {
           />
           <Button
             size="small"
-            @click="() => {
-              const next = formdataRows.slice()
-              next[idx] = { ...next[idx], kind: 'file', file: null }
-              formdataRows = next
-            }"
+            @click="() => switchToFileRow(idx)"
           >
             {{ t.fileButton }}
           </Button>
@@ -359,11 +408,7 @@ function prettyXmlText() {
           </div>
           <Button
             size="small"
-            @click="() => {
-              const next = formdataRows.slice()
-              next[idx] = { ...next[idx], kind: 'text', value: '', file: null, fileName: undefined, fileSize: undefined, fileType: undefined }
-              formdataRows = next
-            }"
+            @click="() => switchToTextRow(idx)"
           >
             {{ t.textMode }}
           </Button>
@@ -436,21 +481,36 @@ function prettyXmlText() {
           {{ rawType === 'json' ? t.validJson : t.validXml }}
         </span>
       </div>
-      <Input.TextArea
-        :value="rawText"
-        :rows="6"
-        :auto-size="{ minRows: 6, maxRows: 20 }"
-        :status="rawError ? 'error' : ''"
-        :placeholder="t.requestBodyPlaceholder"
-        class="raw-textarea"
-        @update:value="(v: string) => rawText = v"
-      />
+      <div
+        class="raw-editor-wrap"
+        :class="{ 'raw-editor-error': rawError }"
+      >
+        <pre
+          ref="rawOverlayRef"
+          class="raw-editor-overlay"
+          v-html="highlightedRaw"
+          aria-hidden="true"
+        />
+        <textarea
+          ref="rawTextareaRef"
+          class="raw-editor-input"
+          :value="rawText"
+          :placeholder="t.requestBodyPlaceholder"
+          :disabled="props.disabled"
+          spellcheck="false"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          @input="(e: InputEvent) => rawText = (e.target as HTMLTextAreaElement).value"
+          @scroll="syncRawScroll"
+        />
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.body-editor { display: flex; flex-direction: column; gap: 12px; }
+.body-editor { display: flex; flex-direction: column; gap: 12px; flex: 1 1 auto; min-height: 0; }
 .body-mode-hint { color: var(--text-tertiary); font-size: 13px; padding: 8px 0; }
 .body-mode-blocked {
   display: flex;
@@ -514,25 +574,81 @@ function prettyXmlText() {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.raw-textarea :deep(textarea) {
-  font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
-  font-size: 13px;
+.raw-editor-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 150px;
+  height: 100%;
+  background: var(--bg-base);
+  border: 1px solid var(--border-base);
+  border-radius: var(--radius-md);
+  overflow: auto;
+}
+.raw-editor-wrap.raw-editor-error {
+  border-color: var(--status-danger);
+}
+/* Stack a transparent <textarea> on top of a <pre v-html> overlay. The
+ * textarea carries the caret and selection but its text is invisible;
+ * the overlay paints the colored tokens. Font, padding, line-height and
+ * white-space must match exactly or the two layers drift. */
+.raw-editor-overlay,
+.raw-editor-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: var(--space-4);
+  border: 0;
+  font-family: 'SF Mono', 'Menlo', ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow: auto;
+  background: transparent;
+  -webkit-text-fill-color: currentColor;
+}
+.raw-editor-overlay {
+  pointer-events: none;
+  color: var(--text-primary);
+}
+.raw-editor-overlay :deep(.tk-key) { color: var(--syntax-key, #2563eb); }
+.raw-editor-overlay :deep(.tk-str) { color: var(--syntax-str, #16a34a); }
+.raw-editor-overlay :deep(.tk-num) { color: var(--syntax-num, #ea580c); }
+.raw-editor-overlay :deep(.tk-kw) { color: var(--syntax-kw, #dc2626); }
+.raw-editor-overlay :deep(.tk-punc) { color: var(--text-tertiary); }
+.raw-editor-input {
+  color: transparent;
+  caret-color: var(--text-primary);
+  resize: none;
+  outline: none;
+}
+.raw-editor-input::placeholder {
+  color: var(--text-tertiary);
+}
+.raw-editor-input::selection {
+  background: var(--accent-soft-bg);
+}
+.raw-editor-input:disabled {
+  cursor: not-allowed;
 }
 
 .fd-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 28px 160px 1fr 80px 28px;
   align-items: center;
   gap: 8px;
   padding: 4px 0;
 }
-.fd-key { flex: 0 0 160px; }
-.fd-value { flex: 1; }
 
-/* Form-data header: matches .fd-row's flex layout exactly so column
- *   labels line up with the inputs below. Spacers for switch / mode-toggle
- *   / delete buttons keep the alignment honest across row states. */
+/* Form-data header aligns with .fd-row grid */
 .fd-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: 28px 160px 1fr 80px 28px;
   align-items: center;
   gap: 8px;
   padding: 8px 0;
@@ -543,15 +659,6 @@ function prettyXmlText() {
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
-/* Ant Switch size="small" renders ~28px wide. Reserve that space so the
- * Field-name label sits over the .fd-key input rather than the toggle. */
-.fd-header-toggle { flex: 0 0 28px; }
-.fd-header-key { flex: 0 0 160px; }
-.fd-header-value { flex: 1; }
-/* Mode-toggle button (.fd-row's text↔file Button) renders ~70-90px wide
- *   depending on label length — leave a flexible-but-bounded slot. */
-.fd-header-action { flex: 0 0 80px; }
-.fd-header-delete { flex: 0 0 28px; }
 .fd-file-cell {
   flex: 1;
   display: flex;
@@ -565,7 +672,6 @@ function prettyXmlText() {
 }
 .fd-file-name { font-weight: 500; }
 .fd-file-size { color: var(--text-tertiary); font-size: 12px; }
-.fd-delete { flex: 0 0 auto; }
 
 /* Hidden file input. The visible "Choose File" button triggers its click()
    programmatically; the input itself can stay off-screen but must remain in

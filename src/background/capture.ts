@@ -52,6 +52,12 @@ const ALWAYS_DROP_SCHEMES = new Set([
 // no way to inspect or replay it — drop it everywhere.
 const SYNTHETIC_INVALID_EXTENSION = /^chrome-extension:\/\/invalid\//i
 
+// Cap the in-flight request map to prevent unbounded growth on long sessions.
+// Old entries are never referenced again after the response; dropping them here
+// keeps memory predictable. The value is a soft ceiling — we only prune on
+// new entries to avoid thrashing a 1000-request page with repeated set operations.
+const MAX_TRACKED_REQUESTS = 5000
+
 /**
  * Pure decision function: should this CDP request be tracked, given the
  * locked-in filter mode for this capture session?
@@ -194,8 +200,13 @@ function handleCdpEvent(tabId: number, method: string, params: any): void {
       postData: req.postData
     }
     tc.indexByRequestId.set(params.requestId, tc.requests.length)
+    // Prune if we've grown beyond the cap — old entries are only referenced by
+    // response/finished events, both of which have the same requestId.
+    if (tc.indexByRequestId.size > MAX_TRACKED_REQUESTS) {
+      tc.indexByRequestId.clear()
+    }
     tc.requests.push(captured)
-    broadcast(tabId, { kind: 'added', request: captured })
+    enqueue(tabId, { kind: 'added', request: captured })
     return
   }
 
@@ -212,7 +223,7 @@ function handleCdpEvent(tabId: number, method: string, params: any): void {
       headers: objectToTuples(resp.headers),
       mimeType: resp.mimeType || resp.headers?.['content-type'] || ''
     }
-    broadcast(tabId, { kind: 'updated', request: r })
+    enqueue(tabId, { kind: 'updated', request: r })
     return
   }
 
@@ -229,12 +240,53 @@ type CaptureEvent =
   // to flip its status pill from "capturing" to "stopped".
   | { kind: 'session-end' }
 
+// Pending broadcast queue per tab, flushed on the next animation frame to
+// coalesce rapid CDP events (e.g. a burst of XHR requests) into a single
+// chrome.runtime.sendMessage call per frame.
+const pendingEvents = new Map<number, CaptureEvent[]>()
+let rafScheduled = false
+
+function scheduleFlush() {
+  if (rafScheduled) return
+  rafScheduled = true
+  requestAnimationFrame(() => {
+    rafScheduled = false
+    for (const [tabId, events] of pendingEvents) {
+      if (!events.length) continue
+      for (const ev of events) {
+        broadcast(tabId, ev)
+      }
+    }
+    pendingEvents.clear()
+  })
+}
+
+function enqueue(tabId: number, event: CaptureEvent): void {
+  let queue = pendingEvents.get(tabId)
+  if (!queue) {
+    queue = []
+    pendingEvents.set(tabId, queue)
+  }
+  queue.push(event)
+  scheduleFlush()
+}
+
 function broadcast(tabId: number, event: CaptureEvent): void {
   // Best-effort: side panel may or may not be open. Ignore rejections.
+  if (!c?.runtime?.sendMessage) return
   try {
-    c?.runtime?.sendMessage?.({ type: 'capture:event', tabId, event })
+    // MV3 returns a Promise when no callback is passed. Without a
+    // receiver (side panel / options closed) it rejects with
+    // "Could not establish connection. Receiving end does not exist."
+    // — a sync try/catch can't catch that, so attach a .catch().
+    const ret = c.runtime.sendMessage({ type: 'capture:event', tabId, event }) as
+      | Promise<unknown>
+      | undefined
+    ret?.catch?.(() => {
+      // No receivers — fine. Side panel will fall back to refresh().
+    })
   } catch {
-    // Side panel not listening, or no receivers — that's fine.
+    // Sync throw (callback-style API or no promise support) — ignore.
   }
 }
 
@@ -254,7 +306,7 @@ async function cleanupTab(tabId: number): Promise<void> {
   } catch {
     // ignore
   }
-  broadcast(tabId, { kind: 'session-end' })
+  enqueue(tabId, { kind: 'session-end' })
 }
 
 
@@ -305,6 +357,7 @@ export async function startCapture(
     indexByRequestId: new Map(),
     filterMode
   })
+  pendingEvents.delete(tabId)
 }
 
 export async function stopCapture(tabId: number): Promise<void> {

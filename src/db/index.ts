@@ -56,7 +56,31 @@ export function openDB(): Promise<IDBDatabase> {
       // Fire-and-forget; doesn't gate readiness.
       migrateLegacyIfNeeded().catch(() => { /* swallow — best effort */ })
     }
-    req.onerror = () => reject(req.error)
+    req.onerror = () => {
+      // IndexedDB disallows opening at a lower version than what's on
+      // disk. This happens when an older build runs over data left by a
+      // newer one (rollback, dev branch switch, stale dev install). The
+      // raw VersionError is opaque — surface a clear hint so the user
+      // knows to clear storage instead of seeing "Uncaught (in promise)
+      // VersionError: The requested version (2) is less than the
+      // existing version (3)".
+      const err = req.error
+      if (err?.name === 'VersionError') {
+        reject(new Error(
+          `IndexedDB "${DB_NAME}" is at a newer version than this build expects ` +
+          `(code expects v${DB_VERSION}). Clear the extension's storage in ` +
+          `chrome://extensions → Pico API → Details → Storage, then reload.`
+        ))
+      } else {
+        reject(err)
+      }
+      // Reset the cached promise so the next openDB() call re-attempts
+      // the open. Otherwise the rejected promise gets pinned for the
+      // page lifetime — even after the user clears storage and reloads
+      // data, every IDB call here would keep rejecting until a full
+      // page refresh.
+      dbPromise = null
+    }
   })
 
   return dbPromise
@@ -193,54 +217,53 @@ export const folders = {
     const db = await openDB()
     const t = tx(db, [STORE_FOLDERS, STORE_REQUESTS], 'readwrite')
 
-    // 1. Compute the full descendant set in-memory. Using a single readwrite
-    //    transaction here is critical: if we await between operations, the
-    //    transaction auto-commits and subsequent writes go to a new tx.
-    const allFolders = await new Promise<Folder[]>((resolve, reject) => {
-      const r = t.objectStore(STORE_FOLDERS).getAll()
-      r.onsuccess = () => resolve(r.result as Folder[])
-      r.onerror = () => reject(r.error)
-    })
+    // Build the descendant set by walking the parentId index in a single
+    // cursor — no getAll(), no interleaved awaits.
+    const foldersStore = t.objectStore(STORE_FOLDERS)
+    const requestsStore = t.objectStore(STORE_REQUESTS)
 
     const toDelete = new Set<string>([id])
-    let added = true
-    while (added) {
-      added = false
-      for (const f of allFolders) {
-        if (f.parentId && toDelete.has(f.parentId) && !toDelete.has(f.id)) {
-          toDelete.add(f.id)
-          added = true
+    const pendingParents = [id]
+
+    while (pendingParents.length) {
+      const parentId = pendingParents.pop()!
+      const children: Folder[] = await new Promise((resolve, reject) => {
+        const result: Folder[] = []
+        const cursorReq = foldersStore.index('parentId').openCursor(IDBKeyRange.only(parentId))
+        cursorReq.onsuccess = () => {
+          const cursor = cursorReq.result
+          if (!cursor) { resolve(result); return }
+          result.push(cursor.value)
+          cursor.continue()
+        }
+        cursorReq.onerror = () => reject(cursorReq.error)
+      })
+      for (const child of children) {
+        if (!toDelete.has(child.id)) {
+          toDelete.add(child.id)
+          pendingParents.push(child.id)
         }
       }
     }
 
-    // 2. All folder deletions on the same tx.
-    const foldersStore = t.objectStore(STORE_FOLDERS)
+    // Now delete on the same tx — no more awaits between operations.
     for (const fid of toDelete) {
       foldersStore.delete(fid)
     }
 
-    // 3. Requests belong to folders: walk the requests index on folderId
-    //    and delete those whose folderId is in toDelete.
-    const requestsStore = t.objectStore(STORE_REQUESTS)
     for (const fid of toDelete) {
       const idx = requestsStore.index('folderId')
       const cursorReq = idx.openCursor(IDBKeyRange.only(fid))
       await new Promise<void>((resolve, reject) => {
         cursorReq.onsuccess = () => {
           const cursor = cursorReq.result
-          if (cursor) {
-            cursor.delete()
-            cursor.continue()
-          } else {
-            resolve()
-          }
+          if (cursor) { cursor.delete(); cursor.continue() }
+          else resolve()
         }
         cursorReq.onerror = () => reject(cursorReq.error)
       })
     }
 
-    // 4. Wait for transaction completion so callers can rely on durability.
     await new Promise<void>((resolve, reject) => {
       t.oncomplete = () => resolve()
       t.onerror = () => reject(t.error)
@@ -296,8 +319,25 @@ export const history = {
     const db = await openDB()
     const t = tx(db, STORE_HISTORY, 'readonly')
     const idx = t.objectStore(STORE_HISTORY).index('sentAt')
-    const all = await awaitReq<HistoryEntry[]>(idx.getAll())
-    return all.sort((a, b) => b.sentAt - a.sentAt).slice(0, limit)
+    return new Promise((resolve, reject) => {
+      const results: HistoryEntry[] = []
+      // 'prev' direction iterates high→low; stop once we have enough.
+      const cursorReq = idx.openCursor(null, 'prev')
+      cursorReq.onsuccess = () => {
+        const cursor = cursorReq.result
+        if (!cursor) {
+          resolve(results)
+          return
+        }
+        results.push(cursor.value)
+        if (results.length >= limit) {
+          resolve(results)
+        } else {
+          cursor.continue()
+        }
+      }
+      cursorReq.onerror = () => reject(cursorReq.error)
+    })
   },
 
   async add(entry: HistoryEntry): Promise<void> {

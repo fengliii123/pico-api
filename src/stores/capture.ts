@@ -48,11 +48,38 @@ async function send<T>(type: string, payload: Record<string, unknown> = {}): Pro
 
 // Resolve the currently-active tab in the focused window. Used at start
 // time so the user doesn't have to know the tabId themselves.
+//
+// When called from the options page, `currentWindow` is the window the
+// options tab lives in, and `active: true` returns the options page
+// itself — debugger would attach to the options tab and capture nothing
+// useful. In that case fall back to the most recently focused non-
+// internal tab in the same window so the user gets the page they
+// actually want to debug.
+function isInternalTabUrl(url: string | undefined): boolean {
+  if (!url) return false
+  return (
+    url.startsWith('chrome-extension://') ||
+    url.startsWith('chrome://') ||
+    url.startsWith('devtools://') ||
+    url.startsWith('edge://') ||
+    url.startsWith('about:')
+  )
+}
+
 async function activeTabId(): Promise<number> {
   const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
-  const tab = tabs?.[0]
-  if (!tab?.id) throw new Error('No active tab found')
-  return tab.id
+  const active = tabs?.[0]
+  if (active?.id && !isInternalTabUrl(active.url)) return active.id
+
+  // active tab is the options page itself (or another internal page) —
+  // fall back to the most recently activated real tab in this window.
+  const allTabs = await chrome.tabs.query({ currentWindow: true })
+  const fallback = [...allTabs]
+    .sort((a, b) => (b.lastAccessed ?? 0) - (a.lastAccessed ?? 0))
+    .find((t) => t.id != null && !isInternalTabUrl(t.url))
+  if (fallback?.id) return fallback.id
+
+  throw new Error('No active tab found')
 }
 
 export const useCaptureStore = defineStore('capture', () => {

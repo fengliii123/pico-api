@@ -39,6 +39,13 @@ npm run dev      # 本地开发（在普通浏览器标签页加载）
 npm run build    # 生产构建到 dist/
 ```
 
+`npm run dev` 启动后，在浏览器中打开以下任一地址即可。项目根目录没有
+`index.html`，直接访问 `http://localhost:5173/` 会 404，必须指定具体入口：
+
+- 主界面：    <http://localhost:5173/src/options/index.html>
+- 侧边栏：    <http://localhost:5173/src/sidepanel/index.html>
+- 沙箱：      <http://localhost:5173/src/sandbox/index.html>
+
 ## 以扩展方式加载
 
 1. `npm run build`
