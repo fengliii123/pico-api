@@ -180,18 +180,15 @@ export const useRequestStore = defineStore('request', () => {
   function setUrl(url: string) {
     draft.value.url = url
 
-    // Bidirectional sync: if the user pastes / types a URL with a query
-    // string, move the query params into the Params tab so the URL stays
-    // clean. We only update params when the query string actually has
-    // content — this avoids nuking user edits on every keystroke during
-    // typing.
-    //
-    // To keep the typing UX responsive we DON'T re-extract on every input
-    // event: a real "?" is needed to trigger a parse. The URL bar still
-    // shows what the user typed verbatim.
+    // Bidirectional sync: if the URL contains a query string, parse and
+    // sync params from it. If the URL has no query string at all, clear
+    // params to keep the UI and URL in sync — otherwise a URL like
+    // "https://example.com" with params `[{foo:1}]` would show a mismatch.
     const parsed = parseQueryParams(url)
-    if (parsed.length > 0) {
+    if (url.includes('?')) {
       draft.value.params = parsed
+    } else {
+      draft.value.params = []
     }
 
     markEdited()

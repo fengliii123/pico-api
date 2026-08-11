@@ -24,6 +24,7 @@ export interface Translations {
   // Actions
   save: string
   send: string
+  sendStreaming: string
   cancel: string
   delete: string
   edit: string
@@ -311,6 +312,7 @@ export interface Translations {
   allMethods: string
   allStatus: string
   loading: string
+  receiving: string
   noHistoryEntries: string
   noMatchingEntries: string
   sendRequestsHistoryHint: string
@@ -524,6 +526,7 @@ const en: Translations = {
 
   save: 'Save',
   send: 'Send',
+  sendStreaming: 'Stream',
   cancel: 'Cancel',
   delete: 'Delete',
   edit: 'Edit',
@@ -786,6 +789,7 @@ const en: Translations = {
   allMethods: 'All Methods',
   allStatus: 'All Status',
   loading: 'Loading...',
+  receiving: 'Receiving...',
   noHistoryEntries: 'No history entries',
   noMatchingEntries: 'No entries match your filters',
   sendRequestsHistoryHint: 'Send some requests to see them here',
@@ -985,6 +989,7 @@ const zhCN: Translations = {
 
   save: '保存',
   send: '发送',
+  sendStreaming: '流式',
   cancel: '取消',
   delete: '删除',
   edit: '编辑',
@@ -1247,6 +1252,7 @@ const zhCN: Translations = {
   allMethods: '全部方法',
   allStatus: '全部状态',
   loading: '加载中...',
+  receiving: '请求中...',
   noHistoryEntries: '暂无历史记录',
   noMatchingEntries: '没有匹配的记录',
   sendRequestsHistoryHint: '发送一些请求即可在此查看',

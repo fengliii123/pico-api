@@ -30,6 +30,57 @@ const result = computed(() =>
   state.value.kind === 'success' ? state.value.result : null
 )
 
+// Streaming state: exposes chunks for live rendering
+const streamingChunks = computed(() =>
+  state.value.kind === 'streaming' ? state.value.chunks : []
+)
+const streamingMime = computed(() =>
+  state.value.kind === 'streaming' ? state.value.mime : ''
+)
+const isStreaming = computed(() => state.value.kind === 'streaming')
+const isStreamingCompleted = computed(() =>
+  state.value.kind === 'streaming' && state.value.completed === true
+)
+const streamingResult = computed(() =>
+  state.value.kind === 'streaming' ? state.value.result : null
+)
+const streamingTestResults = computed(() =>
+  state.value.kind === 'streaming' ? (state.value.testResults ?? []) : []
+)
+const failedStreamingTests = computed(() =>
+  streamingTestResults.value.filter(r => !r.passed).length
+)
+
+// Auto-scroll: tracks if user has scrolled away from bottom
+const streamingBodyRef = ref<HTMLElement | null>(null)
+const userScrolledAway = ref(false)
+
+function handleScroll() {
+  const el = streamingBodyRef.value
+  if (!el) return
+  const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+  userScrolledAway.value = distanceFromBottom > 50
+}
+
+function scrollToBottom() {
+  const el = streamingBodyRef.value
+  if (!el || userScrolledAway.value) return
+  el.scrollTop = el.scrollHeight
+}
+
+// Watch chunks for auto-scroll
+watch(streamingChunks, async () => {
+  await nextTick()
+  scrollToBottom()
+}, { deep: true })
+
+// Reset scroll state when streaming starts
+watch(isStreaming, (streaming) => {
+  if (streaming) {
+    userScrolledAway.value = false
+  }
+})
+
 // Set-Cookie values returned by the background bridge. Empty when the
 // response had no Set-Cookie headers, or when we're running in dev mode
 // (foreground fetch hides Set-Cookie under CORS).
@@ -93,6 +144,67 @@ watch(state, async () => {
 
     <div v-else-if="state.kind === 'loading'" class="response-loading">
       <Spin :tip="t.sending" />
+    </div>
+
+    <div v-else-if="state.kind === 'streaming' && !isStreamingCompleted" class="response-streaming">
+      <div class="streaming-header">
+        <span class="streaming-badge">{{ t.receiving }}</span>
+        <span class="streaming-indicator"></span>
+      </div>
+      <div class="streaming-body" ref="streamingBodyRef" @scroll="handleScroll">
+        <pre class="streaming-content">{{ streamingChunks.map(c => c.text).join('') }}</pre>
+      </div>
+    </div>
+
+    <!-- Streaming completed: show full response UI with tabs -->
+    <div v-else-if="isStreamingCompleted" class="response-success">
+      <Tabs v-model:active-key="activeTab" class="body-tabs">
+        <template #tabBarExtraContent>
+          <span class="tabs-extra">
+            <StatusTag :status="streamingResult?.status ?? 200" />
+            <span class="tabs-extra-meta">
+              {{ formatTime(streamingResult?.time ?? 0) }} · {{ formatBytes(streamingResult?.body?.size ?? 0) }}
+            </span>
+          </span>
+        </template>
+        <Tabs.TabPane key="body" :tab="t.response">
+          <ResponseBodyRenderer :result="streamingResult" />
+        </Tabs.TabPane>
+
+        <Tabs.TabPane key="headers" :tab="t.headers">
+          <div class="headers-table">
+            <div class="headers-header">
+              <span class="h-col-name">{{ t.headerName }}</span>
+              <span class="h-col-value">{{ t.value }}</span>
+            </div>
+            <div
+              v-for="[k, v] in streamingResult?.headers ?? []"
+              :key="k"
+              class="headers-row"
+            >
+              <div class="h-col-name headers-key">{{ k }}</div>
+              <textarea
+                class="h-col-value headers-value-textarea"
+                :value="v"
+                rows="1"
+                readonly
+                spellcheck="false"
+                @click="($event.target as HTMLTextAreaElement).select()"
+              />
+            </div>
+          </div>
+        </Tabs.TabPane>
+
+        <Tabs.TabPane v-if="streamingTestResults.length > 0" key="tests">
+          <template #tab>
+            <span class="tab-label">{{ t.responseTestsTab }}
+              <span v-if="failedStreamingTests > 0" class="tab-badge tab-badge-fail">{{ failedStreamingTests }}</span>
+              <span v-else class="tab-badge tab-badge-pass">{{ streamingTestResults.length }}</span>
+            </span>
+          </template>
+          <TestResults :results="streamingTestResults" />
+        </Tabs.TabPane>
+      </Tabs>
     </div>
 
     <ResponseErrorBanner
@@ -213,6 +325,61 @@ watch(state, async () => {
 .response-empty-hint {
   font-size: 13px;
   color: var(--text-tertiary);
+}
+
+/* Streaming response */
+.response-streaming {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 12px;
+  gap: 8px;
+  overflow: hidden;
+}
+.streaming-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+.streaming-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-family: 'SF Mono', 'Menlo', monospace;
+}
+.streaming-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--status-success);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+.streaming-body {
+  flex: 1;
+  overflow: auto;
+  background: var(--code-bg);
+  border: 1px solid var(--code-border);
+  border-radius: 6px;
+}
+.streaming-content {
+  margin: 0;
+  padding: 12px;
+  font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+  font-size: 12.5px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-primary);
 }
 .response-success {
   padding: 8px 12px;

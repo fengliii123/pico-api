@@ -341,6 +341,140 @@ async function executeViaBridge(req: NormalizedRequest, opts: ExecuteOptions): P
   } satisfies ResponseError
 }
 
+// Streaming fetch via background bridge (CORS bypass).
+// Uses chrome.runtime.connect for bidirectional chunk relay.
+async function executeStreamingViaBridge(
+  req: NormalizedRequest,
+  opts: StreamingExecuteOptions
+): Promise<ResponseResult> {
+  const id = Math.random().toString(36).slice(2) + Date.now().toString(36)
+
+  // Transport body handling (same as executeViaBridge).
+  let transportBody: any = req.body
+  let transportBodyIsBlob = false
+  let transportBodyContentType: string | undefined
+  if (req.body instanceof Blob) {
+    transportBodyIsBlob = true
+    transportBodyContentType = req.body.type
+    const buf = await req.body.arrayBuffer()
+    transportBody = bytesToBase64(new Uint8Array(buf))
+  }
+
+  const bridgeReq: BridgeNormalizedRequest = {
+    ...req,
+    body: transportBody,
+    _bodyIsBlob: transportBodyIsBlob,
+    _bodyContentType: transportBodyContentType
+  }
+
+  const { onChunk, signal } = opts
+  let fullText = ''
+  let headers: Array<[string, string]> = []
+  let status = 200
+  let statusText = 'OK'
+  let mime = ''
+  let time = 0
+  let resolve: (v: ResponseResult & { isStreaming: boolean; chunks: string[] }) => void = () => {}
+  let reject: (e: ResponseError) => void = () => {}
+  let port: any = null
+  const chunks: string[] = []
+
+  const promise = new Promise<ResponseResult & { isStreaming: boolean; chunks: string[] }>((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+
+  // Set up abort handling.
+  let aborted = false
+  const abortHandler = () => {
+    aborted = true
+    try {
+      chrome.runtime.sendMessage({ type: 'fetch:abort', id })
+    } catch { /* ignore */ }
+    if (port) port.disconnect()
+    reject({ message: 'Request aborted', errorKind: 'aborted' })
+  }
+  if (signal) {
+    if (signal.aborted) {
+      abortHandler()
+      return promise
+    }
+    signal.addEventListener('abort', abortHandler, { once: true })
+  }
+
+  // Connect to background for streaming.
+  port = chrome.runtime.connect({ name: id })
+
+  let chunkCount = 0
+  console.log('[executeStreaming] Bridge: Starting stream for', req.url)
+
+  port.onMessage.addListener((msg: any) => {
+    if (msg.type === 'headers') {
+      headers = msg.headers
+      status = msg.status
+      statusText = msg.statusText
+    } else if (msg.type === 'chunk') {
+      chunkCount++
+      fullText += msg.chunk
+      onChunk(msg.chunk)
+      chunks.push(msg.chunk)
+    } else if (msg.type === 'done') {
+      mime = msg.mime
+      time = msg.time
+      console.log('[executeStreaming] Bridge: done, chunkCount:', chunkCount, 'isStreaming:', chunkCount > 1)
+      resolve({
+        status,
+        statusText,
+        headers,
+        body: { blob: new Blob([fullText], { type: mime }), text: fullText, size: fullText.length },
+        time,
+        mime,
+        timing: undefined,
+        isStreaming: chunkCount > 1,  // True streaming = multiple chunks
+        chunks
+      })
+      port?.disconnect()
+    } else if (msg.type === 'error') {
+      reject({ message: msg.message, errorKind: msg.errorKind, originalMessage: msg.message })
+      port?.disconnect()
+    }
+  })
+
+  port.onDisconnect.addListener(() => {
+    if (!aborted && !fullText) {
+      reject({ message: 'Connection lost', errorKind: 'unknown', originalMessage: 'Connection lost' })
+    }
+  })
+
+  // Set up timeout.
+  const timeout = req.settings?.timeout ?? 0
+  const timeoutId = timeout > 0 ? setTimeout(() => {
+    abortHandler()
+  }, timeout) : null
+
+  // Send streaming request to background.
+  chrome.runtime.sendMessage({
+    type: 'fetch:streaming',
+    id,
+    req: bridgeReq,
+    options: { sendBrowserCookies: opts.sendBrowserCookies ?? true }
+  }, (response: any) => {
+    if (timeoutId) clearTimeout(timeoutId)
+    if (aborted) return
+
+    if (chrome.runtime.lastError) {
+      reject({ message: chrome.runtime.lastError.message ?? 'bridge error', errorKind: 'unknown' })
+      return
+    }
+
+    if (!response?.ok) {
+      reject(response?.error || { message: 'Unknown error', errorKind: 'unknown' })
+    }
+  })
+
+  return promise
+}
+
 // Execute an HTTP request. Returns a normalized ResponseResult.
 // Rejects with ResponseError on network / abort failures.
 //
@@ -419,5 +553,107 @@ async function executeDirect(
       originalMessage: String(e?.message ?? 'Network error')
     }
     throw err
+  }
+}
+
+// Streaming response handler: reads the response as a stream and calls onChunk
+// for each piece of data received. Returns the final ResponseResult when done.
+export type StreamChunkHandler = (text: string) => void
+
+export interface StreamingExecuteOptions extends ExecuteOptions {
+  onChunk: StreamChunkHandler
+}
+
+// Routing: extension mode uses background bridge for CORS bypass.
+export async function executeStreaming(
+  req: NormalizedRequest,
+  opts: StreamingExecuteOptions
+): Promise<ResponseResult & { isStreaming: boolean; chunks: string[] }> {
+  if (hasExtensionRuntime()) {
+    return executeStreamingViaBridge(req, opts)
+  }
+  return executeStreamingDirect(req, opts)
+}
+
+// Direct streaming (no CORS bypass).
+async function executeStreamingDirect(
+  req: NormalizedRequest,
+  opts: StreamingExecuteOptions
+): Promise<ResponseResult & { isStreaming: boolean; chunks: string[] }> {
+  const t0 = performance.now()
+  const { onChunk, ...rest } = opts
+
+  const init: RequestInit = {
+    method: req.method,
+    headers: req.headers,
+    credentials: 'same-origin',
+    redirect: req.settings?.followRedirects === false ? 'manual' : 'follow'
+  }
+  if (req.body !== undefined) {
+    init.body = req.body
+  }
+
+  const timeout = req.settings?.timeout ?? 0
+  let timeoutId: ReturnType<typeof setTimeout> | undefined
+  let timeoutCtrl: AbortController | undefined
+  if (timeout > 0) {
+    timeoutCtrl = new AbortController()
+    timeoutId = setTimeout(() => timeoutCtrl!.abort(), timeout)
+  }
+  const combined = mergeAbortSignals(rest.signal, timeoutCtrl?.signal)
+  if (combined) init.signal = combined
+
+  const res = await fetch(req.url, init)
+  if (timeoutId) clearTimeout(timeoutId)
+
+  const reader = res.body?.getReader()
+  if (!reader) {
+    throw { message: 'Response body is not streamable', errorKind: 'unknown' } satisfies ResponseError
+  }
+
+  const decoder = new TextDecoder()
+  let fullText = ''
+  let chunkCount = 0
+  const chunks: string[] = []
+  console.log('[executeStreaming] Direct: Starting stream for', req.url)
+  let lastLogTime = Date.now()
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      chunkCount++
+      if (Date.now() - lastLogTime > 500) {
+        console.log('[executeStreaming] Direct: chunk', chunkCount, 'received, length:', value?.length)
+        lastLogTime = Date.now()
+      }
+      const chunk = decoder.decode(value, { stream: true })
+      onChunk(chunk)
+      chunks.push(chunk)
+      fullText += chunk
+    }
+  } finally {
+    reader.releaseLock()
+  }
+
+  const t1 = performance.now()
+  const headers: Array<[string, string]> = []
+  res.headers.forEach((v, k) => headers.push([k, v]))
+
+  const timing = extractResourceTiming(req.url)
+  const mime = res.headers.get('Content-Type') ?? ''
+
+  console.log('[executeStreaming] Direct: Done. chunkCount:', chunkCount, 'isStreaming:', chunkCount > 1)
+  return {
+    status: res.status,
+    statusText: res.statusText,
+    headers,
+    body: { blob: new Blob([fullText], { type: mime }), text: fullText, size: new Blob([fullText]).size },
+    time: Math.round(t1 - t0),
+    mime,
+    timing,
+    isStreaming: chunkCount > 1,  // True streaming = multiple chunks
+    chunks
   }
 }

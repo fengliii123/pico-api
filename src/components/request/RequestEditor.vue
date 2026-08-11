@@ -30,6 +30,10 @@ const resStore = useResponseStore()
 const { send, cancel } = useRequestExecution()
 
 const isSending = computed(() => resStore.state.kind === 'loading')
+const isStreaming = computed(() => {
+  const s = resStore.state
+  return s.kind === 'streaming' && s.completed !== true
+})
 
 const draft = computed(() => reqStore.draft)
 
@@ -494,16 +498,21 @@ defineExpose({ send })
         />
       </div>
       <Button
-        v-if="isSending"
+        v-if="isSending || isStreaming"
         danger
         class="url-send url-cancel"
         @click="cancel"
       >
         {{ t.cancel }}
       </Button>
-      <Button v-else type="primary" class="url-send" @click="send">
+      <Button
+        v-else
+        type="primary"
+        class="url-send"
+        @click="send"
+      >
         <template #icon><SendOutlined /></template>
-        {{ t.send }}
+        {{ isStreaming ? t.sendStreaming : t.send }}
       </Button>
     </div>
 
@@ -764,6 +773,18 @@ defineExpose({ send })
   background: var(--pico-brand-active) !important;
   border-color: var(--pico-brand-active) !important;
   transform: translateY(0.5px);
+}
+/* Stream button - secondary style, sits next to the primary Send button */
+.url-stream.ant-btn {
+  border-color: var(--border-strong);
+  color: var(--text-secondary);
+  height: 32px;
+  padding-inline: var(--space-4);
+}
+.url-stream.ant-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft-bg);
 }
 .req-tabs { flex: 0 0 auto; }
 .req-tabs :deep(.ant-tabs-nav) {

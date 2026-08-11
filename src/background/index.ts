@@ -17,7 +17,7 @@ import {
   type CaptureFilterMode
 } from './capture'
 
-type MessageType = 'fetch' | 'fetch:abort' | 'capture:start' | 'capture:stop' | 'capture:list' | 'capture:status' | 'capture:clear'
+type MessageType = 'fetch' | 'fetch:abort' | 'fetch:streaming' | 'capture:start' | 'capture:stop' | 'capture:list' | 'capture:status' | 'capture:clear'
 
 interface FetchAbortPayload {
   type: 'fetch:abort'
@@ -26,6 +26,13 @@ interface FetchAbortPayload {
 
 interface FetchPayload {
   type?: 'fetch'
+  id: string
+  req: BridgeNormalizedRequest
+  options?: { sendBrowserCookies?: boolean }
+}
+
+interface FetchStreamingPayload {
+  type: 'fetch:streaming'
   id: string
   req: BridgeNormalizedRequest
   options?: { sendBrowserCookies?: boolean }
@@ -41,13 +48,17 @@ interface CapturePayload {
   filterMode?: CaptureFilterMode
 }
 
-type InboundMessage = FetchPayload | FetchAbortPayload | CapturePayload
+type InboundMessage = FetchPayload | FetchAbortPayload | FetchStreamingPayload | CapturePayload
 
 // In-flight fetch abort handles — keyed by the bridge message id.
 const inflightFetches = new Map<string, AbortController>()
+// In-flight streaming controllers — keyed by id.
+const inflightStreaming = new Map<string, ReadableStreamDefaultController<any>>()
 
 function abortInflightFetch(id: string): void {
   inflightFetches.get(id)?.abort()
+  inflightStreaming.get(id)?.close()
+  inflightStreaming.delete(id)
 }
 
 interface ResponsePayload extends Omit<ResponseResult, 'body'> {
@@ -67,6 +78,9 @@ const c = (globalThis as any).chrome as
       runtime: {
         onMessage: {
           addListener: (cb: (msg: any, sender: any, sendResponse: (r: any) => void) => any) => void
+        }
+        onConnect: {
+          addListener: (cb: (port: any) => void) => void
         }
         openOptionsPage: () => void
       }
@@ -205,7 +219,110 @@ async function runFetch(payload: FetchPayload): Promise<{ ok: true; result: Resp
   }
 }
 
+// Streaming fetch: reads response as a stream and sends chunks via chrome.runtime port.
+async function runStreamingFetch(
+  payload: FetchStreamingPayload
+): Promise<{ id: string; ok: true } | { id: string; ok: false; error: ResponseError }> {
+  const t0 = performance.now()
+  const cancelCtrl = new AbortController()
+  inflightFetches.set(payload.id, cancelCtrl)
+
+  // Find the port for this streaming request.
+  const port = streamingPorts.get(payload.id)
+
+  try {
+    // Inject browser cookies.
+    let headers = payload.req.headers
+    if (payload.options?.sendBrowserCookies) {
+      const hasUserCookie = Object.keys(headers).some(k => k.toLowerCase() === 'cookie')
+      if (!hasUserCookie) {
+        const cookieHeader = await buildBrowserCookieHeader(payload.req.url)
+        if (cookieHeader) {
+          headers = { ...headers, Cookie: cookieHeader }
+        }
+      }
+    }
+
+    const init: RequestInit = {
+      method: payload.req.method,
+      headers,
+      redirect: payload.req.settings?.followRedirects === false ? 'manual' : 'follow',
+      signal: cancelCtrl.signal
+    }
+    if (payload.req.body !== undefined) {
+      init.body = payload.req.body as BodyInit
+    }
+
+    const res = await fetch(payload.req.url, init)
+
+    const headersOut: Array<[string, string]> = []
+    res.headers.forEach((v, k) => headersOut.push([k, v]))
+
+    const reader = res.body?.getReader()
+    if (!reader) {
+      return { id: payload.id, ok: false, error: { message: 'Response body is not streamable', errorKind: 'unknown' } }
+    }
+
+    const decoder = new TextDecoder()
+    let fullText = ''
+
+    // Send headers immediately via the port.
+    port?.postMessage({ type: 'headers', headers: headersOut, status: res.status, statusText: res.statusText })
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        const chunk = decoder.decode(value, { stream: true })
+        fullText += chunk
+        port?.postMessage({ type: 'chunk', chunk })
+      }
+    } finally {
+      reader.releaseLock()
+    }
+
+    const mime = res.headers.get('Content-Type') ?? ''
+    port?.postMessage({
+      type: 'done',
+      mime,
+      time: Math.round(performance.now() - t0)
+    })
+    port?.disconnect()
+
+    return { id: payload.id, ok: true }
+  } catch (e: any) {
+    port?.postMessage({ type: 'error', message: e?.message ?? 'Network error', errorKind: e?.name === 'AbortError' ? 'aborted' : 'unknown' })
+    port?.disconnect()
+    inflightStreaming.delete(payload.id)
+
+    const err: ResponseError = {
+      message: e?.name === 'AbortError' ? 'Request aborted' : (e?.message ?? 'Network error'),
+      errorKind: e?.name === 'AbortError' ? 'aborted' : 'unknown',
+      originalMessage: String(e?.message ?? 'Network error')
+    }
+    return { id: payload.id, ok: false, error: err }
+  } finally {
+    inflightFetches.delete(payload.id)
+  }
+}
+
+// Track streaming ports by request id.
+const streamingPorts = new Map<string, any>()
+
 if (c) {
+  // Listen for streaming connections.
+  c.runtime.onConnect.addListener((port: any) => {
+    const id = port.name
+    if (id) {
+      streamingPorts.set(id, port)
+      port.onDisconnect.addListener(() => {
+        streamingPorts.delete(id)
+        abortInflightFetch(id)
+      })
+    }
+  })
+
   c.runtime.onMessage.addListener((msg: InboundMessage, _sender: any, sendResponse: (r: any) => void) => {
     // Returning true keeps the channel open while we await sendResponse.
     ;(async () => {
@@ -262,6 +379,13 @@ async function dispatch(msg: InboundMessage): Promise<{ id: string; ok: true; re
     if (type === 'fetch:abort') {
       abortInflightFetch(msg.id)
       return { id: msg.id, ok: true, result: { aborted: true } }
+    }
+    if (type === 'fetch:streaming') {
+      const result = await runStreamingFetch(msg as FetchStreamingPayload)
+      if (result.ok) {
+        return { id: msg.id, ok: true, result: { status: 'streaming' } }
+      }
+      return result
     }
     // Default to fetch (also covers pre-router messages with no type).
     const fetchReply = await runFetch(msg as FetchPayload)

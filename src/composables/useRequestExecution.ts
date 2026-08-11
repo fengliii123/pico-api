@@ -10,7 +10,7 @@ import { useRequestStore } from '@/stores/request'
 import { useResponseStore } from '@/stores/response'
 import { useSettingsStore } from '@/stores/settings'
 import { useEnvironmentStore } from '@/stores/environment'
-import { normalize, execute, type NormalizedRequest } from '@/core/http'
+import { normalize, execute, executeStreaming, type NormalizedRequest, type StreamChunkHandler } from '@/core/http'
 import { findUnresolvedVariables } from '@/core/variables'
 import { runScript, type TestResult, type VariableChange, type PmApi } from '@/core/scripts/vm'
 import { history as historyDb } from '@/db'
@@ -224,8 +224,6 @@ export function useRequestExecution() {
       return
     }
 
-    resStore.setLoading()
-
     // Pre-validate URL before scripts run (so scripts don't modify an
     // invalid URL).
     let normalized: NormalizedRequest
@@ -285,14 +283,26 @@ export function useRequestExecution() {
         }
       }
 
-      const result = await execute(normalized, {
+      resStore.setStreaming(normalized.headers?.['accept'] ?? '')
+
+      const onChunk: StreamChunkHandler = (text) => {
+        resStore.appendStreamChunk(text)
+      }
+
+      const result = await executeStreaming(normalized, {
         sendBrowserCookies: settingsStore.sendBrowserCookies,
-        signal
+        signal,
+        onChunk
       })
 
       const post = await runPostResponse(draft.scripts?.postResponse ?? '', normalized, result)
 
-      resStore.setResult(result, post.testResults, { preRequest: preRequest.logs, postResponse: post.logs })
+      // Use server-reported streaming flag
+      if (result.isStreaming) {
+        resStore.finishStreaming(result, post.testResults, { preRequest: preRequest.logs, postResponse: post.logs })
+      } else {
+        resStore.setResult(result, post.testResults, { preRequest: preRequest.logs, postResponse: post.logs })
+      }
       await recordHistory(result.status, result.time, result.body.size)
     } catch (e: any) {
       if (e?.errorKind === 'aborted' || signal.aborted) {

@@ -11,7 +11,7 @@
 // New (unsaved) requests have id=null; we use the special sentinel key
 // '__new__' so they can still show a response while editing.
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, shallowRef } from 'vue'
 import type { ResponseResult, ResponseError } from '@/core/types'
 
 // Test results collected from test scripts
@@ -19,6 +19,11 @@ export interface ScriptTestResult {
   name: string
   passed: boolean
   error?: string
+}
+
+export interface StreamChunk {
+  text: string
+  timestamp: number
 }
 
 export interface ScriptLogs {
@@ -29,6 +34,7 @@ export interface ScriptLogs {
 export type ResponseState =
   | { kind: 'idle' }
   | { kind: 'loading' }
+  | { kind: 'streaming'; chunks: StreamChunk[]; mime: string; completed?: boolean; result?: ResponseResult; testResults?: ScriptTestResult[]; scriptLogs?: ScriptLogs }
   | { kind: 'success'; result: ResponseResult; testResults?: ScriptTestResult[]; scriptLogs?: ScriptLogs }
   // On error we keep the same 'kind' discriminant (the response-state
   // machine) AND inherit ResponseError fields. ResponseError uses
@@ -39,7 +45,7 @@ const NEW_REQUEST_KEY = '__new__'
 
 export const useResponseStore = defineStore('response', () => {
   // Map<requestId, ResponseState>
-  const cache = ref(new Map<string, ResponseState>())
+  const cache = shallowRef(new Map<string, ResponseState>())
   // id of the request currently shown in the editor (null = blank/new state)
   const activeId = ref<string | null>(null)
 
@@ -52,35 +58,69 @@ export const useResponseStore = defineStore('response', () => {
   })
 
   // Call this whenever the editor loads a new request (saved or new).
-  // Sets the activeId so subsequent setLoading/setResult affect the right slot.
+  // Sets the activeId so subsequent state setters affect the right slot.
   function setActive(id: string | null) {
     activeId.value = id
   }
 
-  function setLoading() {
-    // The "new request" sentinel covers the case where the user is
-    // editing an unsaved draft (draft.id === null) and clicks Send.
-    // We always want a slot to write into so the response panel can
-    // render the in-flight state, otherwise early-return and the
-    // panel stays stuck on "No response yet".
-    const key = activeId.value ?? NEW_REQUEST_KEY
-    cache.value.set(key, { kind: 'loading' })
-  }
-
   function setResult(result: ResponseResult, testResults?: ScriptTestResult[], scriptLogs?: ScriptLogs) {
-    // Same reasoning as setLoading: an unsaved draft still has a
-    // slot, we just key it on the sentinel so the result renders.
     const key = activeId.value ?? NEW_REQUEST_KEY
-    cache.value.set(key, { kind: 'success', result, testResults, scriptLogs })
+    const newCache = new Map(cache.value)
+    newCache.set(key, { kind: 'success', result, testResults, scriptLogs })
+    cache.value = newCache
   }
 
   function setError(err: ResponseError | string, testResults?: ScriptTestResult[], scriptLogs?: ScriptLogs) {
     const key = activeId.value ?? NEW_REQUEST_KEY
     const s: ResponseState =
       typeof err === 'string'
-        ? { kind: 'error', message: err, testResults, scriptLogs }
+        ? { kind: 'error', message: err, errorKind: 'unknown', testResults, scriptLogs }
         : { kind: 'error', ...err, testResults, scriptLogs }
-    cache.value.set(key, s)
+    const newCache = new Map(cache.value)
+    newCache.set(key, s)
+    cache.value = newCache
+  }
+
+  // Streaming state management
+  function setStreaming(mime: string) {
+    const key = activeId.value ?? NEW_REQUEST_KEY
+    const newCache = new Map(cache.value)
+    newCache.set(key, { kind: 'streaming', chunks: [], mime })
+    cache.value = newCache
+  }
+
+  function appendStreamChunk(text: string) {
+    const key = activeId.value ?? NEW_REQUEST_KEY
+    const current = cache.value.get(key)
+    if (current?.kind === 'streaming') {
+      const newCache = new Map(cache.value)
+      newCache.set(key, {
+        ...current,
+        chunks: [...current.chunks, { text, timestamp: Date.now() }]
+      })
+      cache.value = newCache
+    }
+  }
+
+  function finishStreaming(result: ResponseResult & { isStreaming: boolean }, testResults?: ScriptTestResult[], scriptLogs?: ScriptLogs) {
+    const key = activeId.value ?? NEW_REQUEST_KEY
+    const current = cache.value.get(key)
+    const newCache = new Map(cache.value)
+    
+    if (current?.kind === 'streaming' && result.isStreaming) {
+      newCache.set(key, {
+        kind: 'streaming',
+        chunks: current.chunks,
+        mime: current.mime,
+        completed: true,
+        result,
+        testResults,
+        scriptLogs
+      })
+    } else {
+      newCache.set(key, { kind: 'success', result, testResults, scriptLogs })
+    }
+    cache.value = newCache
   }
 
   // Clear only the *current* slot (called when the user edits the draft
@@ -100,9 +140,11 @@ export const useResponseStore = defineStore('response', () => {
     state,
     activeId,
     setActive,
-    setLoading,
     setResult,
     setError,
+    setStreaming,
+    appendStreamChunk,
+    finishStreaming,
     reset,
     clearAll
   }
