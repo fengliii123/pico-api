@@ -19,7 +19,7 @@ import { fmt } from '@/i18n'
 
 const { t } = useI18n()
 const props = defineProps<{
-  result: ResponseResult
+  result?: ResponseResult | null
 }>()
 
 const viewMode = ref<'pretty' | 'raw' | 'tree'>('pretty')
@@ -29,18 +29,18 @@ const pdfUrl = ref<string | null>(null)
 const prettyJson = ref<string>('')
 const prettyXml = ref<string>('')
 
-const kind = computed(() => classify(props.result.mime, props.result.body.text))
+const kind = computed(() => classify(props.result?.mime ?? '', props.result?.body?.text ?? ''))
 
 // Thresholds for keeping the renderer responsive on large bodies.
 const PRETTY_LIMIT = 1_000_000      // 1 MB — skip pretty above this
 const RENDER_LIMIT = 5_000_000      // 5 MB — cap the DOM text above this
 
-const rawBodySize = computed(() => props.result.body.text.length)
+const rawBodySize = computed(() => props.result?.body?.text?.length ?? 0)
 const prettyDisabled = computed(() => rawBodySize.value > PRETTY_LIMIT)
 const renderTruncated = computed(() => rawBodySize.value > RENDER_LIMIT)
 
 const bodyText = computed(() => {
-  const raw = props.result.body.text
+  const raw = props.result?.body?.text ?? ''
   if (renderTruncated.value) {
     return raw.slice(0, RENDER_LIMIT) + `\n\n…[truncated — response is ${(raw.length / 1024 / 1024).toFixed(1)} MB, copy for full content]`
   }
@@ -82,6 +82,7 @@ async function copyBody() {
 }
 
 async function downloadBody() {
+  if (!props.result) return
   try {
     const blob = props.result.body.blob
     const mime = props.result.mime || 'application/octet-stream'
@@ -102,6 +103,7 @@ const canShowTree = computed(() => {
 // Re-derive derived state whenever a new response arrives. Revoke any
 // outstanding object URLs so we don't leak blob references between sends.
 watch(() => props.result, (r) => {
+  if (!r) return
   if (imageUrl.value) {
     URL.revokeObjectURL(imageUrl.value)
     imageUrl.value = null
@@ -157,7 +159,7 @@ onBeforeUnmount(() => {
     <div class="pdf-placeholder binary-placeholder">
       <FileTextOutlined style="font-size: 48px; margin-bottom: 12px;" />
       <p>{{ t.pdfPreview }}</p>
-      <p style="font-size: 11px; margin-top: 8px;">{{ formatBytes(result.body.size) }}</p>
+      <p style="font-size: 11px; margin-top: 8px;">{{ formatBytes(result?.body?.size ?? 0) }}</p>
     </div>
     <div class="binary-actions">
       <Button size="small" @click="downloadBody">
@@ -169,7 +171,7 @@ onBeforeUnmount(() => {
   <div v-else-if="kind === 'binary'" class="binary-container">
     <div class="binary-placeholder">
       <DownloadOutlined style="font-size: 32px; margin-bottom: 8px;" />
-      <p>{{ t.binaryData }} — {{ formatBytes(result.body.size) }}</p>
+      <p>{{ t.binaryData }} — {{ formatBytes(result?.body?.size ?? 0) }}</p>
     </div>
     <Button size="small" @click="downloadBody">
       <template #icon><DownloadOutlined /></template>
@@ -179,7 +181,7 @@ onBeforeUnmount(() => {
   <div v-else class="code-wrap">
     <div class="code-toolbar">
       <div class="code-toolbar-info">
-        <span class="code-mime">{{ result.mime || 'text' }}</span>
+        <span class="code-mime">{{ result?.mime || 'text' }}</span>
         <span v-if="prettyDisabled" class="code-size-warn" :title="t.largePrettyOff">
           {{ t.largePrettyOff }}
         </span>

@@ -346,7 +346,7 @@ async function executeViaBridge(req: NormalizedRequest, opts: ExecuteOptions): P
 async function executeStreamingViaBridge(
   req: NormalizedRequest,
   opts: StreamingExecuteOptions
-): Promise<ResponseResult> {
+): Promise<ResponseResult & { isStreaming: boolean; chunks: string[] }> {
   const id = Math.random().toString(36).slice(2) + Date.now().toString(36)
 
   // Transport body handling (same as executeViaBridge).

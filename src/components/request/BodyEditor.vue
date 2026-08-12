@@ -4,7 +4,7 @@
 //   - formdata: multipart/form-data with text or file rows
 //   - raw: free-form text with optional syntax mode (json / xml / text)
 import { computed, nextTick, ref } from 'vue'
-import { Input, Select, Button, Switch, message } from 'ant-design-vue'
+import { Input, Select, Button, Switch, Radio, message } from 'ant-design-vue'
 import { DeleteOutlined, FileOutlined, PlusOutlined, FormatPainterOutlined, CompressOutlined, CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons-vue'
 import KeyValueTable from './KeyValueTable.vue'
 import type {
@@ -68,8 +68,8 @@ const rawType = computed({
   set: (v: RawType) => emit('update:modelValue', { ...props.modelValue, rawType: v })
 })
 
-function onRawTypeChange(v: RawType) {
-  rawType.value = v
+function onRawTypeChange(v: any) {
+  rawType.value = v as RawType
 }
 
 const rawText = computed({
@@ -391,7 +391,7 @@ function syncRawScroll() {
             </Button>
             <input
               type="file"
-              :ref="setFileInputRef(idx)"
+              :ref="(el) => setFileInputRef(idx)(el as HTMLInputElement | null)"
               class="fd-file-input"
               accept="*/*"
               @change="(e) => onFileInputChange(idx, e)"
