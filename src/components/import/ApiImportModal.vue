@@ -22,7 +22,7 @@ import { useI18n } from '@/i18n/useI18n'
 import { fmt } from '@/i18n'
 import { MAX_DEPTH } from '@/stores/collection'
 
-type Mode = 'curl' | 'openapi'
+type Mode = 'curl' | 'openapi' | 'apifox'
 
 const { t } = useI18n()
 const open = defineModel<boolean>('open', { default: false })
@@ -45,6 +45,8 @@ watch(open, v => {
     error.value = ''
     warnings.value = []
     destinationFolder.value = null
+    apifoxProjectId.value = ''
+    apifoxAccessToken.value = ''
   }
 })
 
@@ -332,6 +334,73 @@ async function importFromUrl() {
   }
 }
 
+// Apifox Open API: POST /v1/projects/{projectId}/export-openapi
+// returns the project as an OpenAPI 3.0 JSON document, which we feed
+// straight into parseOpenApi by switching to the openapi mode.
+const apifoxProjectId = ref('')
+const apifoxAccessToken = ref('')
+const fetchingFromApifox = ref(false)
+
+async function fetchFromApifox() {
+  const projectId = apifoxProjectId.value.trim()
+  const token = apifoxAccessToken.value.trim()
+  if (!projectId || !token) return
+
+  fetchingFromApifox.value = true
+  error.value = ''
+  try {
+    const res = await fetch(
+      `https://api.apifox.com/api/v1/projects/${encodeURIComponent(projectId)}/export-openapi`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'X-Apifox-Api-Version': '2024-03-28',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          scope: 'ALL_RESOURCES',
+          oasVersion: '3.0',
+          options: {}
+        })
+      }
+    )
+    if (!res.ok) {
+      // Apifox error body shape: { errors: [{code, message}] }
+      let detail = ''
+      try {
+        const body = await res.json()
+        const errs = body?.errors
+        if (Array.isArray(errs) && errs.length > 0) {
+          detail = errs.map((e: any) => e?.message).filter(Boolean).join('; ')
+        } else if (typeof body?.message === 'string') {
+          detail = body.message
+        }
+      } catch {
+        // response wasn't JSON — fall back to status text
+      }
+      if (res.status === 401 || res.status === 403) {
+        throw new Error(t.value.apifoxTokenInvalid)
+      }
+      if (res.status === 404) {
+        throw new Error(t.value.apifoxProjectNotFound)
+      }
+      throw new Error(`HTTP ${res.status}${detail ? `: ${detail}` : ''}`)
+    }
+    const content = await res.text()
+    text.value = content
+    // Switch to openapi mode so the user sees the preview + can tweak
+    // before clicking Import. Don't auto-trigger importOpenApi — the
+    // user might want to verify the operation count first.
+    mode.value = 'openapi'
+    message.success(t.value.imported)
+  } catch (e: any) {
+    error.value = e?.message ?? String(e)
+  } finally {
+    fetchingFromApifox.value = false
+  }
+}
+
 const showNewFolderInput = ref(false)
 const newFolderInputName = ref('')
 
@@ -377,7 +446,8 @@ function cancelNewFolder() {
         v-model:value="mode"
         :options="[
           { value: 'curl', label: t.curl },
-          { value: 'openapi', label: t.openapiSwagger }
+          { value: 'openapi', label: t.openapiSwagger },
+          { value: 'apifox', label: t.apifox }
         ]"
       />
       <div class="import-mode-actions">
@@ -449,11 +519,49 @@ function cancelNewFolder() {
     <p v-if="mode === 'curl'" class="import-hint">
       {{ t.pasteCurlHint }}
     </p>
-    <p v-else class="import-hint">
+    <p v-else-if="mode === 'openapi'" class="import-hint">
       {{ t.pasteOpenapiHint }}
     </p>
+    <p v-else class="import-hint">
+      {{ t.apifoxHint }}
+    </p>
+
+    <div v-if="mode === 'apifox'" class="apifox-form">
+      <div class="apifox-row">
+        <label class="apifox-label">{{ t.apifoxProjectId }}</label>
+        <Input
+          v-model:value="apifoxProjectId"
+          size="small"
+          :placeholder="t.apifoxProjectId"
+          class="apifox-input"
+          @press-enter="fetchFromApifox"
+        />
+      </div>
+      <div class="apifox-row">
+        <label class="apifox-label">{{ t.apifoxAccessToken }}</label>
+        <Input.Password
+          v-model:value="apifoxAccessToken"
+          size="small"
+          :placeholder="t.apifoxAccessToken"
+          class="apifox-input"
+          @press-enter="fetchFromApifox"
+        />
+      </div>
+      <div class="apifox-actions">
+        <Button
+          type="primary"
+          size="small"
+          :loading="fetchingFromApifox"
+          :disabled="!apifoxProjectId.trim() || !apifoxAccessToken.trim()"
+          @click="fetchFromApifox"
+        >
+          {{ t.fetchFromApifox }}
+        </Button>
+      </div>
+    </div>
 
     <Input.TextArea
+      v-else
       v-model:value="text"
       :rows="10"
       :placeholder="curlPlaceholder"
@@ -493,7 +601,7 @@ function cancelNewFolder() {
       <Button @click="open = false">{{ t.cancel }}</Button>
       <Button type="primary" :disabled="!text.trim()" @click="onImport">
         <template #icon><PlusOutlined /></template>
-        {{ mode === 'curl' ? t.import : `${t.import} ${willImportCount} 接口` }}
+        {{ mode === 'openapi' && willImportCount > 0 ? `${t.import} ${willImportCount} 接口` : t.import }}
       </Button>
     </div>
   </Modal>
@@ -542,6 +650,31 @@ function cancelNewFolder() {
   border-radius: 3px;
   font-family: 'SF Mono', 'Menlo', monospace;
   font-size: 11px;
+}
+.apifox-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.apifox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.apifox-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  width: 88px;
+  flex-shrink: 0;
+}
+.apifox-input {
+  flex: 1;
+}
+.apifox-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 .import-textarea :deep(textarea) {
   font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;

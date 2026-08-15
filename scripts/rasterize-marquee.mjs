@@ -7,6 +7,7 @@ import { chromium } from 'playwright'
 import { readFile, writeFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
+import { processedLogoDataUri } from './process-logo.mjs'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const storeDir = join(here, '..', 'store')
@@ -16,14 +17,19 @@ const outPath = join(storeDir, 'marquee-1400x560.png')
 const W = 1400
 const H = 560
 
-const svg = await readFile(svgPath, 'utf8')
-
 const browser = await chromium.launch({
   headless: true,
   executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH
     || `${process.env.HOME}/Library/Caches/ms-playwright/chromium-1228/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing`
 })
 try {
+  // Strip the logo's white border in-browser, then inline as a data URI so
+  // the SVG is self-contained when handed to setContent() (which has no base
+  // URL for relative path resolution).
+  const logoDataUri = await processedLogoDataUri(browser)
+  let svg = await readFile(svgPath, 'utf8')
+  svg = svg.replace('../public/icons/128.png', logoDataUri)
+
   const ctx = await browser.newContext({
     viewport: { width: W, height: H },
     deviceScaleFactor: 1

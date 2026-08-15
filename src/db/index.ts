@@ -130,6 +130,26 @@ let legacyMigrationDone = false
 function migrateLegacyIfNeeded(): Promise<void> {
   if (legacyMigrationDone) return Promise.resolve()
   legacyMigrationDone = true
+
+  // Probe via indexedDB.databases() BEFORE opening. Calling
+  // indexedDB.open(name) without a version *creates* an empty v1 DB if
+  // the name doesn't exist — so the previous implementation spammed a
+  // garbage 'mini-postman-v2' DB into existence on every fresh install,
+  // then bailed out (v1 !== DB_VERSION v2) without deleting it. We
+  // avoid that side effect by checking existence first.
+  if (typeof indexedDB.databases === 'function') {
+    return indexedDB.databases().then(dbs => {
+      if (!dbs.some(d => d.name === LEGACY_DB_NAME)) return
+      return openAndMigrateLegacy()
+    }).catch(() => { /* swallow — best effort */ })
+  }
+  // Fallback for environments without databases() (older browsers, or
+  // fake-indexeddb in tests). We accept the empty-DB side effect there
+  // because the production target (Chrome) always has databases().
+  return openAndMigrateLegacy()
+}
+
+function openAndMigrateLegacy(): Promise<void> {
   return new Promise((resolve) => {
     const probe = indexedDB.open(LEGACY_DB_NAME)
     probe.onsuccess = () => {

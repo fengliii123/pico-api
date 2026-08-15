@@ -203,6 +203,7 @@ type PromptState = {
   visible: boolean
   title: string
   initialValue: string
+  placeholder?: string
   onOk: (value: string) => Promise<void> | void
   validate?: (v: string) => string | null
 }
@@ -263,7 +264,8 @@ async function askNewFolder(parentId: string | null) {
   }
   await openPrompt({
     title: t.value.newFolder,
-    initialValue: t.value.newFolder,
+    initialValue: '',
+    placeholder: t.value.newFolder,
     validate: (v) => {
       if (!v) return t.value.nameRequired
       const clash = collStore.folderList.some(f => f.parentId === parentId && f.name.trim() === v.trim())
@@ -357,7 +359,8 @@ async function deleteFolderPrompt(folderId: string) {
 async function askNewRequest(folderId: string | null) {
   await openPrompt({
     title: t.value.newRequest,
-    initialValue: t.value.newRequest,
+    initialValue: '',
+    placeholder: t.value.newRequest,
     validate: (v) => {
       if (!v) return t.value.nameRequired
       const clash = collStore.requestList.some(r => r.folderId === folderId && r.name.trim() === v.trim())
@@ -666,7 +669,7 @@ async function onAntdDrop(info: any) {
     >
       <Input
         v-model:value="promptValue"
-        :placeholder="prompt.initialValue"
+        :placeholder="prompt.placeholder || prompt.initialValue"
         autofocus
         @keydown.enter="submitPrompt"
       />

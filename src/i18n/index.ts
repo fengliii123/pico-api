@@ -228,6 +228,7 @@ export interface Translations {
   rawView: string
   pdfPreview: string
   binaryData: string
+  noResponseBody: string
   corsError: string
   dnsError: string
   connectError: string
@@ -278,6 +279,13 @@ export interface Translations {
   fetchingUrl: string
   newFolderName: string
   invalidImportUrl: string
+  apifox: string
+  apifoxProjectId: string
+  apifoxAccessToken: string
+  apifoxHint: string
+  fetchFromApifox: string
+  apifoxTokenInvalid: string
+  apifoxProjectNotFound: string
 
   // Export modal
   exportAsOpenapi: string
@@ -711,6 +719,7 @@ const en: Translations = {
   rawView: 'Raw',
   pdfPreview: 'PDF Preview',
   binaryData: 'Binary data',
+  noResponseBody: 'No response body',
   corsError: 'Blocked by CORS — the server did not include this origin in Access-Control-Allow-Origin.',
   dnsError: "DNS lookup failed for the host.",
   connectError: 'Could not reach the server.',
@@ -758,6 +767,13 @@ const en: Translations = {
   fetchingUrl: 'Fetching…',
   newFolderName: 'New folder',
   invalidImportUrl: 'Invalid URL — paste a direct link to a .json or .yaml file.',
+  apifox: 'Apifox',
+  apifoxProjectId: 'Project ID',
+  apifoxAccessToken: 'Access Token',
+  apifoxHint: 'Find Project ID in the Apifox project URL. Generate a token at Account Settings → API Access Token.',
+  fetchFromApifox: 'Fetch from Apifox',
+  apifoxTokenInvalid: 'Access token is invalid or lacks permission for this project.',
+  apifoxProjectNotFound: 'Project not found — check the Project ID.',
 
   exportAsOpenapi: 'Export as OpenAPI',
   exportScopeSingle: 'Current Request',
@@ -1174,6 +1190,7 @@ const zhCN: Translations = {
   rawView: 'Raw',
   pdfPreview: 'PDF 预览',
   binaryData: '二进制数据',
+  noResponseBody: '无响应内容',
   corsError: '被 CORS 拦截 — 服务器未在 Access-Control-Allow-Origin 中包含此来源。',
   dnsError: '主机名 DNS 解析失败。',
   connectError: '无法连接到服务器。',
@@ -1221,6 +1238,13 @@ const zhCN: Translations = {
   fetchingUrl: '正在获取…',
   newFolderName: '新建文件夹',
   invalidImportUrl: '链接无效 — 请粘贴 .json 或 .yaml 文件的直接链接。',
+  apifox: 'Apifox',
+  apifoxProjectId: '项目 ID',
+  apifoxAccessToken: 'Access Token',
+  apifoxHint: '项目 ID 在 Apifox 项目 URL 中查看；Token 在「账号设置 → API 访问令牌」生成。',
+  fetchFromApifox: '从 Apifox 拉取',
+  apifoxTokenInvalid: 'Access Token 无效或没有该项目的访问权限。',
+  apifoxProjectNotFound: '项目不存在 — 请检查项目 ID。',
 
   exportAsOpenapi: '导出为 OpenAPI',
   exportScopeSingle: '当前请求',

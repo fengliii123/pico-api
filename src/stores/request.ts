@@ -1,7 +1,7 @@
 // Request editor store: draft state decoupled from IndexedDB SavedRequest.
 
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, shallowRef } from 'vue'
 import type { DraftRequest, KeyValueRow, HttpMethod, RequestBody, SavedRequest, AuthConfig, RequestScripts, RequestSettings } from '@/core/types'
 import { defaultRequestSettings } from '@/core/defaults'
 import { uid } from '@/utils/id'
@@ -53,6 +53,32 @@ function cloneBody(body: RequestBody): RequestBody {
   return cloned
 }
 
+// Snapshot a draft for the in-memory cache. Unlike cloneBody, this PRESERVES
+// formdata File references — File objects live in memory and survive a
+// structured-clone copy, just not a JSON round-trip. deepClone() would drop
+// the bytes, so we restore file refs after the JSON pass.
+function snapshotDraft(d: DraftRequest): DraftRequest {
+  const cloned = deepClone(d) as DraftRequest
+  if (cloned.body.mode === 'formdata' && d.body.mode === 'formdata') {
+    const src = d.body.formdata ?? []
+    const dst = cloned.body.formdata
+    if (dst) {
+      dst.forEach((row, i) => {
+        if (row.kind === 'file') {
+          row.file = src[i]?.file ?? null
+        }
+      })
+    }
+  }
+  return cloned
+}
+
+// Cache key for unsaved drafts (id === null). A fresh "New" / capture load
+// always overwrites this slot, so only the most recent unsaved draft is
+// retained — which matches user expectation (there's no tree node to
+// "switch back to" for an unsaved draft anyway).
+const NEW_REQUEST_KEY = '__new__'
+
 // Backward-compat: pre-v* data stored post-response code under `tests`.
 // `migrateScripts` lives in core/scripts/migrate.ts so collection
 // components can share the same logic.
@@ -81,14 +107,35 @@ export const useRequestStore = defineStore('request', () => {
   // a scalar instead of deep-walking the entire draft tree.
   const editGeneration = ref(0)
 
+  // Per-request in-memory draft cache. Keyed by request id (or NEW_REQUEST_KEY
+  // for unsaved drafts) so switching A → B → A restores A's un-saved edits
+  // without round-tripping to IndexedDB. Lives only for the session — a page
+  // refresh rebuilds this map empty, which is exactly the "discard on reload"
+  // behaviour we want. shallowRef: the map identity matters more than deep
+  // reactivity, and this avoids wrapping File refs in proxies.
+  const draftCache = shallowRef(new Map<string, DraftRequest>())
+
+  function cacheKeyFor(id: string | null): string {
+    return id ?? NEW_REQUEST_KEY
+  }
+
   function markEdited() {
     editGeneration.value++
     dirty.value = true
+    // Persist the current draft into the per-id cache so switching away and
+    // back keeps the edits. Snapshot detaches Vue's reactive proxy so later
+    // in-place mutations don't silently mutate the cached copy.
+    const key = cacheKeyFor(draft.value.id)
+    draftCache.value.set(key, snapshotDraft(draft.value))
   }
 
   const isNew = computed(() => draft.value.id === null)
 
   function newRequest(folderId: string | null = null) {
+    // Clear any previous unsaved-draft slot — the user explicitly hit "New"
+    // and shouldn't get a stale capture / prior new draft resurrected when
+    // they switch away and back through other requests.
+    draftCache.value.delete(NEW_REQUEST_KEY)
     draft.value = { ...emptyDraft(), folderId }
     dirty.value = false
     // Switch the response cache slot to the new-request sentinel so
@@ -107,6 +154,9 @@ export const useRequestStore = defineStore('request', () => {
   // goes through createRequest (rather than silently no-op'ing through
   // updateRequest with a non-existent id).
   function loadFromDraft(d: Omit<DraftRequest, 'id'> & { id?: string | null }) {
+    // Replace the unsaved-draft slot — capture / import starts a fresh
+    // unsaved draft, any prior NEW_REQUEST_KEY content is stale.
+    draftCache.value.delete(NEW_REQUEST_KEY)
     draft.value = {
       id: null,
       folderId: d.folderId ?? null,
@@ -127,6 +177,17 @@ export const useRequestStore = defineStore('request', () => {
   }
 
   function loadFromSaved(r: SavedRequest) {
+    // Restore un-saved edits if we have a cached draft for this id. The
+    // cached snapshot is by definition newer than the IndexedDB row (it was
+    // written by markEdited since the last save), so it wins on switch-back.
+    const cached = draftCache.value.get(r.id)
+    if (cached) {
+      draft.value = snapshotDraft(cached)
+      dirty.value = true
+      useResponseStore().setActive(r.id)
+      return
+    }
+
     // If the saved URL had a query string, seed the Params tab from it when
     // params were never persisted. Then sync enabled params back into the URL
     // so import/load paths (OpenAPI, cURL) that only populate params[] still
@@ -247,8 +308,25 @@ export const useRequestStore = defineStore('request', () => {
   }
 
   function markSaved(id: string) {
+    if (draft.value.id === null) {
+      // Drop the unsaved-draft slot — its content is now persisted under
+      // the assigned id, and a stale NEW_REQUEST_KEY copy would otherwise
+      // shadow future fresh captures.
+      draftCache.value.delete(NEW_REQUEST_KEY)
+    }
     draft.value.id = id
     dirty.value = false
+    // The draft now matches what's in IndexedDB — drop any cached un-saved
+    // snapshot so the next loadFromSaved(id) walks the SavedRequest path
+    // with dirty=false (a cache hit here would falsely flag the request
+    // as modified).
+    draftCache.value.delete(id)
+  }
+
+  // Drop a request's cached draft. Called when the request itself is
+  // deleted so we don't keep growing the cache with dead ids.
+  function forgetCached(id: string) {
+    draftCache.value.delete(id)
   }
 
   return {
@@ -270,6 +348,7 @@ export const useRequestStore = defineStore('request', () => {
     setSettings,
     setFolder,
     toSaved,
-    markSaved
+    markSaved,
+    forgetCached
   }
 })

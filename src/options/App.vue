@@ -1,16 +1,25 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { theme as antdTheme, ConfigProvider } from 'ant-design-vue'
+import zhCN from 'ant-design-vue/es/locale/zh_CN'
+import enUS from 'ant-design-vue/es/locale/en_US'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import OnboardingModal from '@/components/common/OnboardingModal.vue'
 import { useSettingsStore } from '@/stores/settings'
+import { useI18n } from '@/i18n/useI18n'
 
 const settings = useSettingsStore()
+const { locale } = useI18n()
 
 // Sync Ant Design components with our data-theme. antd-vue 4.x takes the
 // algorithm via the `theme.algorithm` field on ConfigProvider. 'eye' uses
 // the light algorithm but our CSS variables paint it green.
 const isDark = computed(() => settings.theme === 'dark')
+
+// Drive Ant Design's built-in copy (Modal OK/Cancel, Empty, Pagination…)
+// from the same locale ref our own i18n uses, so the whole UI stays in
+// one language instead of mixed English/Chinese.
+const antdLocale = computed(() => (locale.value === 'zh-CN' ? zhCN : enUS))
 
 // Pull the brand primary out of the active theme's CSS variable so AntD
 // tokens follow the same palette the rest of the UI paints from. Reading
@@ -32,7 +41,7 @@ const themeConfig = computed(() => ({
 </script>
 
 <template>
-  <ConfigProvider :theme="themeConfig">
+  <ConfigProvider :theme="themeConfig" :locale="antdLocale">
     <AppLayout />
     <OnboardingModal />
   </ConfigProvider>

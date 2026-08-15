@@ -31,6 +31,14 @@ const prettyXml = ref<string>('')
 
 const kind = computed(() => classify(props.result?.mime ?? '', props.result?.body?.text ?? ''))
 
+// Empty body (HTTP 204 / void / 0 bytes) — surface a friendly hint instead
+// of the misleading "Binary data — 0 B" the binary fallback would render.
+const isEmptyBody = computed(() => {
+  const body = props.result?.body
+  if (!body) return true
+  return body.size === 0 && (body.text ?? '') === ''
+})
+
 // Thresholds for keeping the renderer responsive on large bodies.
 const PRETTY_LIMIT = 1_000_000      // 1 MB — skip pretty above this
 const RENDER_LIMIT = 5_000_000      // 5 MB — cap the DOM text above this
@@ -145,7 +153,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div v-if="kind === 'image'" class="image-container">
+  <div v-if="isEmptyBody" class="empty-body-placeholder">
+    <FileTextOutlined style="font-size: 32px; margin-bottom: 8px;" />
+    <p>{{ t.noResponseBody }}</p>
+  </div>
+  <div v-else-if="kind === 'image'" class="image-container">
     <img v-if="imageUrl" :src="imageUrl" alt="response" />
     <div class="image-actions">
       <Button size="small" @click="downloadBody">
@@ -288,6 +300,16 @@ onBeforeUnmount(() => {
   padding: var(--space-6);
 }
 .binary-placeholder {
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: var(--fs-sm);
+}
+.empty-body-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-6);
   text-align: center;
   color: var(--text-tertiary);
   font-size: var(--fs-sm);

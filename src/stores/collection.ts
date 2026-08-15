@@ -9,6 +9,7 @@ import { folders as foldersDb, requests as requestsDb } from '@/db'
 import { uid } from '@/utils/id'
 import { deepClone } from '@/utils/clone'
 import { urlWithParams } from '@/core/url'
+import { useRequestStore } from './request'
 
 // `toRaw` strips the top-level Vue reactive Proxy; the deepClone round-trip
 // then detaches any nested Proxies (e.g. KeyValueRow[]) so the object can be
@@ -157,6 +158,9 @@ export const useCollectionStore = defineStore('collection', () => {
   async function deleteRequest(id: string) {
     await requestsDb.delete(id)
     requestList.value = requestList.value.filter(r => r.id !== id)
+    // Drop any cached un-saved draft so a future request reusing this id
+    // (uid collisions aside) never inherits the deleted one's edits.
+    useRequestStore().forgetCached(id)
   }
 
   async function moveRequest(
