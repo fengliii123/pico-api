@@ -212,6 +212,10 @@ export function fromCurl(cmd: string): CurlImportResult {
                flag === '-S' || flag === '--show-error' || flag === '-v' || flag === '--verbose') {
       // Boolean flags we ignore for the model — they don't affect the
       // outgoing request shape we care about.
+    } else if (flag === '--url') {
+      // Explicit --url flag (used by some tools instead of bare URL).
+      const v = next()
+      if (v && !url) url = v
     } else if (flag.startsWith('-')) {
       // Unknown flag — try to consume a value if the next token doesn't
       // look like a flag. Some users pass options like --connect-timeout 5.

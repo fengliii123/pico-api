@@ -89,12 +89,6 @@ export interface Translations {
   clearHistory: string
   noHistory: string
 
-  // Capture
-  capture: string
-  startCapture: string
-  stopCapture: string
-  clearCapture: string
-
   // Templates
   templates: string
   oauthTemplate: string
@@ -106,10 +100,6 @@ export interface Translations {
   autoSaveHistory: string
   sendBrowserCookies: string
   keyboardShortcuts: string
-  captureFilterMode: string
-  captureFilterApiOnly: string
-  captureFilterAll: string
-  captureFilterDescription: string
 
   // Messages
   saved: string
@@ -153,9 +143,6 @@ export interface Translations {
 
 
   // Sidebar / nav
-  sidebarModeRequests: string
-  sidebarModeCapture: string
-  sidebarModeHistory: string
   openFullPage: string
   toggleSidebar: string
   commandPalette: string
@@ -295,26 +282,6 @@ export interface Translations {
   descriptionOptional: string
   exportPreview: string
 
-  // Capture panel
-  capturing: string
-  idle: string
-  stopped: string
-  startCaptureHint: string
-  stopCaptureHint: string
-  refreshBackground: string
-  exportCaptured: string
-  exportCapturedTitle: string
-  searchUrlMethod: string
-  methodFilter: string
-  statusFilter: string
-  clearFilters: string
-  clearList: string
-  captureStartHint: string
-  captureInteractionHint: string
-  curlCommands: string
-  openapiJson: string
-  requestsWillBeExported: string
-
   // History panel
   searchUrlName: string
   allMethods: string
@@ -351,9 +318,6 @@ export interface Translations {
   cmdManageEnvs: string
   cmdImport: string
   cmdExport: string
-  cmdSwitchCapture: string
-  cmdSwitchRequests: string
-  cmdSwitchHistory: string
   cmdTheme: string
   cmdDuplicate: string
 
@@ -365,9 +329,6 @@ export interface Translations {
 
   // Empty state
   nothingHereYet: string
-
-  capturePermissionUnavailable: string
-  capturePermissionError: string
 
   feedback: string
   feedbackHint: string
@@ -478,22 +439,6 @@ export interface Translations {
   cookieHttpOnly: string
   cookieSecure: string
 
-  // Capture panel extras
-  noRequestsToExport: string
-  copiedCurlCommands: string
-  failedCopyClipboard: string
-  exportedOpenApi: string
-  captureStarted: string
-  captureStopped: string
-  savedRequest: string
-  loadedRequestIntoEditor: string
-  exportFormatLabel: string
-  capDetailUrl: string
-  capDetailRequestHeaders: string
-  capDetailRequestBody: string
-  capDetailResponse: string
-  captureDebugBannerNote: string
-
   // Import / templates
   importedRequestsSummary: string
   skippedDuplicatesSummary: string
@@ -595,11 +540,6 @@ const en: Translations = {
   clearHistory: 'Clear History',
   noHistory: 'No history entries',
 
-  capture: 'Capture',
-  startCapture: 'Start',
-  stopCapture: 'Stop',
-  clearCapture: 'Clear',
-
   templates: 'Templates',
   oauthTemplate: 'OAuth 2.0',
   graphqlTemplate: 'GraphQL',
@@ -609,10 +549,6 @@ const en: Translations = {
   autoSaveHistory: 'Auto-save to history',
   sendBrowserCookies: 'Send browser cookies',
   keyboardShortcuts: 'Keyboard Shortcuts',
-  captureFilterMode: 'Capture filter',
-  captureFilterApiOnly: 'API only (Fetch/XHR)',
-  captureFilterAll: 'All requests',
-  captureFilterDescription: 'Takes effect on the next capture start',
 
   saved: 'Saved',
   deleted: 'Deleted',
@@ -649,9 +585,6 @@ const en: Translations = {
   tryExample: 'Try with Example',
   quickTips: 'Quick tips',
 
-  sidebarModeRequests: 'Requests',
-  sidebarModeCapture: 'Capture',
-  sidebarModeHistory: 'History',
   openFullPage: 'Open full page',
   toggleSidebar: 'Toggle sidebar',
   commandPalette: 'Command Palette',
@@ -782,25 +715,6 @@ const en: Translations = {
   descriptionOptional: 'Optional — appears in the OpenAPI info block',
   exportPreview: 'Preview',
 
-  capturing: 'Capturing…',
-  idle: 'Idle',
-  stopped: 'Stopped',
-  startCaptureHint: 'Start capturing this tab',
-  stopCaptureHint: 'Stop capture',
-  refreshBackground: 'Refresh from background',
-  exportCaptured: 'Export captured requests',
-  exportCapturedTitle: 'Export Captured Requests',
-  searchUrlMethod: 'Search URL, method...',
-  methodFilter: 'Method:',
-  statusFilter: 'Status:',
-  clearFilters: 'Clear filters',
-  clearList: 'Clear list',
-  captureStartHint: 'Click Start to begin capturing network requests from this tab.',
-  captureInteractionHint: 'Double-click to load · click to expand · save icon to keep',
-  curlCommands: 'cURL Commands',
-  openapiJson: 'OpenAPI JSON',
-  requestsWillBeExported: 'request(s) will be exported',
-
   searchUrlName: 'Search URL, name...',
   allMethods: 'All Methods',
   allStatus: 'All Status',
@@ -834,9 +748,6 @@ const en: Translations = {
   cmdManageEnvs: 'Manage Environments…',
   cmdImport: 'Import from cURL / OpenAPI…',
   cmdExport: 'Export as OpenAPI…',
-  cmdSwitchCapture: 'Switch to Capture mode',
-  cmdSwitchRequests: 'Switch to Requests mode',
-  cmdSwitchHistory: 'Switch to History mode',
   cmdTheme: 'Theme',
   cmdDuplicate: 'Duplicate current request',
 
@@ -846,9 +757,6 @@ const en: Translations = {
   startFreshDescription: 'Create a new empty folder to organize your requests.',
 
   nothingHereYet: 'Nothing here yet',
-
-  capturePermissionUnavailable: "Your Chrome version doesn't support capturing from this extension.",
-  capturePermissionError: 'Failed to start capture.',
 
   feedback: 'Feedback',
   feedbackHint: 'Report bugs or suggest features on GitHub',
@@ -952,21 +860,6 @@ const en: Translations = {
   cookieHttpOnly: 'HttpOnly',
   cookieSecure: 'Secure',
 
-  noRequestsToExport: 'No requests to export',
-  copiedCurlCommands: 'Copied {n} cURL command(s)',
-  failedCopyClipboard: 'Failed to copy to clipboard',
-  exportedOpenApi: 'Exported as OpenAPI',
-  captureStarted: 'Capture started',
-  captureStopped: 'Capture stopped',
-  savedRequest: 'Saved "{name}"',
-  loadedRequestIntoEditor: 'Loaded "{name}" into editor',
-  exportFormatLabel: 'Export format:',
-  capDetailUrl: 'URL',
-  capDetailRequestHeaders: 'Request headers',
-  capDetailRequestBody: 'Request body',
-  capDetailResponse: 'Response',
-  captureDebugBannerNote: 'The browser will show a "this tab is being debugged" banner while capture is on — that\'s normal. Stop capture to dismiss it.',
-
   importedRequestsSummary: 'Imported {n} request(s)',
   skippedDuplicatesSummary: ', skipped {n} duplicate(s)',
   loadedFileName: 'Loaded {name}',
@@ -1066,11 +959,6 @@ const zhCN: Translations = {
   clearHistory: '清空历史',
   noHistory: '暂无历史记录',
 
-  capture: '抓包',
-  startCapture: '开始',
-  stopCapture: '停止',
-  clearCapture: '清空',
-
   templates: '模板',
   oauthTemplate: 'OAuth 2.0',
   graphqlTemplate: 'GraphQL',
@@ -1080,10 +968,6 @@ const zhCN: Translations = {
   autoSaveHistory: '自动保存历史',
   sendBrowserCookies: '发送浏览器 Cookie',
   keyboardShortcuts: '快捷键',
-  captureFilterMode: '抓包过滤',
-  captureFilterApiOnly: '仅 API (Fetch/XHR)',
-  captureFilterAll: '所有请求',
-  captureFilterDescription: '下次开始抓包时生效',
 
   saved: '已保存',
   deleted: '已删除',
@@ -1120,9 +1004,6 @@ const zhCN: Translations = {
   tryExample: '试试示例',
   quickTips: '使用提示',
 
-  sidebarModeRequests: '请求',
-  sidebarModeCapture: '抓包',
-  sidebarModeHistory: '历史',
   openFullPage: '打开完整页面',
   toggleSidebar: '切换侧边栏',
   commandPalette: '命令面板',
@@ -1253,25 +1134,6 @@ const zhCN: Translations = {
   descriptionOptional: '可选 — 出现在 OpenAPI info 块中',
   exportPreview: '预览',
 
-  capturing: '抓包中…',
-  idle: '空闲',
-  stopped: '已停止',
-  startCaptureHint: '开始抓取此标签页',
-  stopCaptureHint: '停止抓包',
-  refreshBackground: '从后台刷新',
-  exportCaptured: '导出抓包请求',
-  exportCapturedTitle: '导出抓包请求',
-  searchUrlMethod: '搜索 URL、方法...',
-  methodFilter: '方法：',
-  statusFilter: '状态：',
-  clearFilters: '清除过滤',
-  clearList: '清空列表',
-  captureStartHint: '点击开始抓取此标签页的网络请求。',
-  captureInteractionHint: '双击加载 · 单击展开 · 保存图标保留',
-  curlCommands: 'cURL 命令',
-  openapiJson: 'OpenAPI JSON',
-  requestsWillBeExported: '个请求将被导出',
-
   searchUrlName: '搜索 URL、名称...',
   allMethods: '全部方法',
   allStatus: '全部状态',
@@ -1305,9 +1167,6 @@ const zhCN: Translations = {
   cmdManageEnvs: '管理环境…',
   cmdImport: '从 cURL / OpenAPI 导入…',
   cmdExport: '导出为 OpenAPI…',
-  cmdSwitchCapture: '切换到抓包模式',
-  cmdSwitchRequests: '切换到请求模式',
-  cmdSwitchHistory: '切换到历史模式',
   cmdTheme: '主题',
   cmdDuplicate: '复制当前请求',
 
@@ -1317,11 +1176,6 @@ const zhCN: Translations = {
   startFreshDescription: '创建一个新的空文件夹来组织您的请求。',
 
   nothingHereYet: '暂无内容',
-
-  // debugger 是必需的, 不会再有运行时申请弹窗; 保留 "unavailable" / "error" 两个 key
-  // 仅作为 manifest 配置错误时的 fallback 文案
-  capturePermissionUnavailable: '当前 Chrome 版本不支持此扩展的抓包功能。',
-  capturePermissionError: '抓包启动失败。',
 
   feedback: '反馈',
   feedbackHint: '在 GitHub 上报告问题或建议功能',
@@ -1424,21 +1278,6 @@ const zhCN: Translations = {
   cookieFlags: '标志',
   cookieHttpOnly: 'HttpOnly',
   cookieSecure: 'Secure',
-
-  noRequestsToExport: '没有可导出的请求',
-  copiedCurlCommands: '已复制 {n} 条 cURL 命令',
-  failedCopyClipboard: '复制到剪贴板失败',
-  exportedOpenApi: '已导出为 OpenAPI',
-  captureStarted: '抓包已开始',
-  captureStopped: '抓包已停止',
-  savedRequest: '已保存「{name}」',
-  loadedRequestIntoEditor: '已将「{name}」加载到编辑器',
-  exportFormatLabel: '导出格式：',
-  capDetailUrl: 'URL',
-  capDetailRequestHeaders: '请求头',
-  capDetailRequestBody: '请求体',
-  capDetailResponse: '响应',
-  captureDebugBannerNote: '抓包时浏览器会显示「此标签页正在被调试」横幅，属正常现象。停止抓包即可关闭。',
 
   importedRequestsSummary: '已导入 {n} 个请求',
   skippedDuplicatesSummary: '，跳过 {n} 个重复项',

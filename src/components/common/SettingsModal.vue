@@ -4,7 +4,7 @@ import { Modal, Segmented, Checkbox, Switch, message } from 'ant-design-vue'
 import { SettingOutlined, GlobalOutlined, ThunderboltOutlined, KeyOutlined, InfoCircleOutlined, DownloadOutlined, UploadOutlined, GithubOutlined } from '@ant-design/icons-vue'
 import { useSettingsStore } from '@/stores/settings'
 import { useEnvironmentStore } from '@/stores/environment'
-import type { Theme, CaptureFilterMode } from '@/stores/settings'
+import type { Theme } from '@/stores/settings'
 import { LOCALES, type Locale } from '@/i18n'
 import { downloadTextFile } from '@/utils/download'
 import { useI18n } from '@/i18n/useI18n'
@@ -133,15 +133,6 @@ function onThemeChange(v: string | number | boolean) {
   settingsStore.theme = String(v) as Theme
 }
 
-const captureFilterOptions = computed(() => [
-  { value: 'api-only', label: t.value.captureFilterApiOnly },
-  { value: 'all', label: t.value.captureFilterAll }
-])
-
-function onCaptureFilterChange(v: string | number | boolean) {
-  settingsStore.captureFilterMode = String(v) as CaptureFilterMode
-}
-
 // Keyboard shortcuts reference
 const shortcuts = computed(() => [
   { key: '⌘/Ctrl + K', action: t.value.shortcutCommandPalette },
@@ -208,17 +199,6 @@ function close() {
             <span class="setting-description">{{ t.sendCookiesDescription }}</span>
           </div>
           <Switch v-model:checked="settingsStore.sendBrowserCookies" />
-        </div>
-        <div class="setting-item">
-          <div class="setting-label">
-            <span class="setting-name">{{ t.captureFilterMode }}</span>
-            <span class="setting-description">{{ t.captureFilterDescription }}</span>
-          </div>
-          <Segmented
-            :value="settingsStore.captureFilterMode"
-            :options="captureFilterOptions"
-            @change="onCaptureFilterChange"
-          />
         </div>
       </section>
 

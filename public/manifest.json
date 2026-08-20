@@ -2,9 +2,9 @@
   "manifest_version": 3,
   "name": "Pico API - HTTP & REST Client",
   "short_name": "Pico",
-  "version": "1.0.3",
-  "version_name": "1.0.3",
-  "description": "Lightweight HTTP client & REST API tester for Chrome. Send requests, debug APIs, and capture traffic in your side panel.",
+  "version": "1.0.4",
+  "version_name": "1.0.4",
+  "description": "Lightweight HTTP client & REST API tester for Chrome. Send requests and debug APIs without leaving the tab.",
   "minimum_chrome_version": "116",
   "icons": {
     "16": "icons/16.png",
@@ -28,10 +28,7 @@
     "page": "options.html",
     "open_in_tab": true
   },
-  "side_panel": {
-    "default_path": "sidepanel.html"
-  },
-  "permissions": ["cookies", "sidePanel", "debugger"],
+  "permissions": ["cookies"],
   "host_permissions": ["<all_urls>"],
   "sandbox": {
     "pages": ["sandbox.html"]

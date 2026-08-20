@@ -5,8 +5,7 @@ import { readFileSync, writeFileSync, existsSync, rmSync } from 'fs'
 
 // Vite emits each entry HTML at dist/src/<name>/index.html because of
 // the input's source-tree path. For MV3 we need them at the dist root
-// (manifest.options_ui.page / side_panel.default_path both point to
-// dist/options.html / dist/sidepanel.html). This plugin lifts both
+// (manifest.options_ui.page points to dist/options.html). This plugin lifts
 // entries up two levels and rewrites the asset URLs accordingly.
 function flattenEntryHtml(names: string[]): Plugin {
   return {
@@ -60,7 +59,7 @@ export default defineConfig({
   // which then 404s on the manifest's CSP / script policy. Using a
   // relative base ("./") makes the assets load regardless.
   base: './',
-  plugins: [vue(), flattenEntryHtml(['options', 'sidepanel', 'sandbox']), copyPublic()],
+  plugins: [vue(), flattenEntryHtml(['options', 'sandbox']), copyPublic()],
   resolve: {
     alias: {
       '@': resolve(import.meta.dirname, 'src')
@@ -88,7 +87,6 @@ export default defineConfig({
       input: {
         background: resolve(import.meta.dirname, 'src/background/index.ts'),
         options: resolve(import.meta.dirname, 'src/options/index.html'),
-        sidepanel: resolve(import.meta.dirname, 'src/sidepanel/index.html'),
         sandbox: resolve(import.meta.dirname, 'src/sandbox/index.html')
       },
       output: {
@@ -120,13 +118,10 @@ export default defineConfig({
             return 'vendor-misc'
           }
           // Our own modules — keep code-split by route-ish boundaries:
-          //   - openapi / capture are big features only used on demand
+          //   - openapi is a big feature only used on demand
           //   - everything else stays in the entry chunk
           if (id.includes('/core/openapi/') || id.includes('/core/curl')) {
             return 'feature-import-export'
-          }
-          if (id.includes('/core/capture') || id.includes('/background/capture')) {
-            return 'feature-capture'
           }
         }
       }

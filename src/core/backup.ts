@@ -1,6 +1,4 @@
-// Full-application backup format. Covers everything in IndexedDB except
-// transient capture data (chrome.debugger session memory is never persisted,
-// so there's nothing to back up).
+// Full-application backup format. Covers everything in IndexedDB.
 //
 // The schema field + version let us evolve the format without breaking
 // older exports. Import validates the schema header and rejects anything

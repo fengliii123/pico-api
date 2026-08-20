@@ -10,10 +10,9 @@
 //
 // Output files (matching the order they're taken):
 //   1-main-tree-view.png      ← hero shot for the listing
-//   2-capture-panel.png
-//   3-settings.png
-//   4-import-curl.png
-//   5-pretty-view.png
+//   2-settings.png
+//   3-import-curl.png
+//   4-pretty-view.png
 
 import { chromium } from 'playwright'
 import path from 'node:path'
@@ -131,39 +130,22 @@ try {
   await shot('1-main-tree-view')
 
   // =========================================================
-  // Shot 2 — capture panel
+  // Shot 2 — settings modal
   // =========================================================
-  // The sidebar segmented control has "Capture" as the second option.
-  // Find it by visible text.
-  try {
-    await page.getByText('Capture', { exact: true }).first().click()
-    await page.waitForTimeout(600)
-    await shot('2-capture-panel')
-  } catch (e) {
-    console.log('[shot 2] capture button not found, skipping:', e.message)
-  }
-
-  // =========================================================
-  // Shot 3 — settings modal
-  // =========================================================
-  // Switch back to Requests first.
-  try {
-    await page.getByText('Requests', { exact: true }).first().click()
-  } catch { /* ignore */ }
   // Click the Settings button in the sidebar footer.
   try {
     await page.getByRole('button', { name: /settings/i }).first().click()
     await page.waitForTimeout(800)
-    await shot('3-settings')
+    await shot('2-settings')
     // Close modal.
     await page.keyboard.press('Escape')
     await page.waitForTimeout(400)
   } catch (e) {
-    console.log('[shot 3] settings modal failed:', e.message)
+    console.log('[shot 2] settings modal failed:', e.message)
   }
 
   // =========================================================
-  // Shot 4 — import cURL modal
+  // Shot 3 — import cURL modal
   // =========================================================
   try {
     // The Import button has a tooltip "Import from cURL".
@@ -178,15 +160,15 @@ try {
   -d '{"user":"alice","remember":true}'`)
       await page.waitForTimeout(400)
     }
-    await shot('4-import-curl')
+    await shot('3-import-curl')
     await page.keyboard.press('Escape')
     await page.waitForTimeout(400)
   } catch (e) {
-    console.log('[shot 4] import modal failed:', e.message)
+    console.log('[shot 3] import modal failed:', e.message)
   }
 
   // =========================================================
-  // Shot 5 — pretty view (JSON pretty-printed)
+  // Shot 4 — pretty view (JSON pretty-printed)
   // =========================================================
   // Re-send the request so response panel is populated.
   try {
@@ -199,9 +181,9 @@ try {
       await prettyBtn.click({ timeout: 2000 })
       await page.waitForTimeout(500)
     }
-    await shot('5-pretty-view')
+    await shot('4-pretty-view')
   } catch (e) {
-    console.log('[shot 5] pretty view failed:', e.message)
+    console.log('[shot 4] pretty view failed:', e.message)
   }
 
   console.log('\nAll screenshots captured to store/screenshots/')

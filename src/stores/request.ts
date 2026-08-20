@@ -73,11 +73,11 @@ function snapshotDraft(d: DraftRequest): DraftRequest {
   return cloned
 }
 
-// Cache key for unsaved drafts (id === null). A fresh "New" / capture load
-// always overwrites this slot, so only the most recent unsaved draft is
-// retained — which matches user expectation (there's no tree node to
-// "switch back to" for an unsaved draft anyway).
-const NEW_REQUEST_KEY = '__new__'
+  // Cache key for unsaved drafts (id === null). A fresh "New" always
+  // overwrites this slot, so only the most recent unsaved draft is retained
+  // — which matches user expectation (there's no tree node to "switch back
+  // to" for an unsaved draft anyway).
+  const NEW_REQUEST_KEY = '__new__'
 
 // Backward-compat: pre-v* data stored post-response code under `tests`.
 // `migrateScripts` lives in core/scripts/migrate.ts so collection
@@ -133,8 +133,8 @@ export const useRequestStore = defineStore('request', () => {
 
   function newRequest(folderId: string | null = null) {
     // Clear any previous unsaved-draft slot — the user explicitly hit "New"
-    // and shouldn't get a stale capture / prior new draft resurrected when
-    // they switch away and back through other requests.
+    // and shouldn't get a stale prior new draft resurrected when they switch
+    // away and back through other requests.
     draftCache.value.delete(NEW_REQUEST_KEY)
     draft.value = { ...emptyDraft(), folderId }
     dirty.value = false
@@ -149,13 +149,13 @@ export const useRequestStore = defineStore('request', () => {
     markEdited()
   }
 
-  // Load an unsaved draft (e.g. a captured request) straight into the
-  // editor without persisting. `id` is reset to null so the next Save
-  // goes through createRequest (rather than silently no-op'ing through
-  // updateRequest with a non-existent id).
+  // Load an unsaved draft (e.g. an imported cURL / OpenAPI operation)
+  // straight into the editor without persisting. `id` is reset to null so
+  // the next Save goes through createRequest (rather than silently no-op'ing
+  // through updateRequest with a non-existent id).
   function loadFromDraft(d: Omit<DraftRequest, 'id'> & { id?: string | null }) {
-    // Replace the unsaved-draft slot — capture / import starts a fresh
-    // unsaved draft, any prior NEW_REQUEST_KEY content is stale.
+    // Replace the unsaved-draft slot — import starts a fresh unsaved draft,
+    // any prior NEW_REQUEST_KEY content is stale.
     draftCache.value.delete(NEW_REQUEST_KEY)
     draft.value = {
       id: null,
@@ -171,8 +171,8 @@ export const useRequestStore = defineStore('request', () => {
       settings: d.settings ?? defaultRequestSettings()
     }
     dirty.value = true
-    // Captured requests are not yet saved — use null sentinel so
-    // send results go into the new-request slot.
+    // Imported requests are not yet saved — use null sentinel so send
+    // results go into the new-request slot.
     useResponseStore().setActive(null)
   }
 
@@ -311,7 +311,7 @@ export const useRequestStore = defineStore('request', () => {
     if (draft.value.id === null) {
       // Drop the unsaved-draft slot — its content is now persisted under
       // the assigned id, and a stale NEW_REQUEST_KEY copy would otherwise
-      // shadow future fresh captures.
+      // shadow future fresh imports.
       draftCache.value.delete(NEW_REQUEST_KEY)
     }
     draft.value.id = id

@@ -2,7 +2,7 @@
 
 # Pico API
 
-一个住在 Chrome 侧边栏里的轻量级 REST 客户端。发送请求、抓取流量、调试 API，无需离开当前标签页。
+一个轻量级 Chrome REST 客户端。在独立标签页中发送请求、调试 API。
 
 > `pico-` 是国际单位制中 10⁻¹² 的前缀，意为"最小的有意义的单位"。
 > 我们想做最小、但仍然好用的 REST 客户端。
@@ -43,7 +43,6 @@ npm run build    # 生产构建到 dist/
 `index.html`，直接访问 `http://localhost:5173/` 会 404，必须指定具体入口：
 
 - 主界面：    <http://localhost:5173/src/options/index.html>
-- 侧边栏：    <http://localhost:5173/src/sidepanel/index.html>
 - 沙箱：      <http://localhost:5173/src/sandbox/index.html>
 
 ## 以扩展方式加载
@@ -57,16 +56,14 @@ npm run build    # 生产构建到 dist/
 
 ```
 src/
-├── background/      Service Worker（点击图标 → 打开侧边栏）
+├── background/      Service Worker（处理请求转发与 Cookie 注入）
 ├── options/         主 UI（Vue 应用，挂在 options.html）
-├── sidepanel/       侧边栏入口
 ├── sandbox/         脚本沙箱（隔离执行的 iframe）
 ├── components/
 │   ├── layout/      AppLayout
 │   ├── tree/        CollectionTree + treeUtils
 │   ├── request/     RequestEditor + KeyValueTable + BodyEditor + MethodDropdown
 │   ├── response/    ResponsePanel
-│   ├── capture/     CapturePanel + CaptureRow
 │   └── common/      StatusTag、EmptyState、HistoryPanel、SettingsModal 等
 ├── stores/          Pinia：collection、request、response、settings、environment
 ├── db/              IndexedDB schema + CRUD

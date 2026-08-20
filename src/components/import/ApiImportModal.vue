@@ -249,21 +249,21 @@ async function importOpenApi() {
   open.value = false
 }
 
-function onImport() {
+async function onImport() {
   error.value = ''
   warnings.value = []
   if (!text.value.trim()) {
     error.value = 'Paste something first.'
     return
   }
-  if (mode.value === 'curl') {
-    try {
-      void importCurl()
-    } catch (e: any) {
-      error.value = e?.message ?? 'Could not parse cURL command'
+  try {
+    if (mode.value === 'curl') {
+      await importCurl()
+    } else {
+      await importOpenApi()
     }
-  } else {
-    void importOpenApi()
+  } catch (e: any) {
+    error.value = e?.message ?? (mode.value === 'curl' ? 'Could not parse cURL command' : 'Import failed')
   }
 }
 

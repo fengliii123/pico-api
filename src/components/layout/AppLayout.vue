@@ -4,10 +4,9 @@
 // On mount, loads collection data from IndexedDB and seeds an empty draft.
 
 import { computed, onMounted, ref } from 'vue'
-import { Button, Segmented } from 'ant-design-vue'
-import { ImportOutlined, ExportOutlined, MenuOutlined, FullscreenOutlined, ApiOutlined, AimOutlined, HistoryOutlined, ThunderboltOutlined, SettingOutlined } from '@ant-design/icons-vue'
+import { Button } from 'ant-design-vue'
+import { ImportOutlined, ExportOutlined, HistoryOutlined, ThunderboltOutlined, SettingOutlined } from '@ant-design/icons-vue'
 import CollectionTree from '@/components/tree/CollectionTree.vue'
-import CapturePanel from '@/components/capture/CapturePanel.vue'
 import RequestEditor from '@/components/request/RequestEditor.vue'
 import ResponsePanel from '@/components/response/ResponsePanel.vue'
 import EnvironmentSelector from '@/components/environment/EnvironmentSelector.vue'
@@ -68,28 +67,6 @@ const environmentQuickSwitchOpen = ref(false)
 const templateOpen = ref(false)
 const settingsOpen = ref(false)
 
-// Sidebar mode: which "pane" shows under the environment selector.
-// `requests` is the normal collection tree; `capture` is the live
-// network-capture list. Defaulting to requests keeps the UX exactly the
-// same as before for users who don't care about capture.
-type SidebarMode = 'requests' | 'capture'
-const sidebarMode = ref<SidebarMode>('requests')
-const modeOptions = computed(() => [
-  { value: 'requests', label: t.value.sidebarModeRequests, icon: ApiOutlined },
-  { value: 'capture', label: t.value.sidebarModeCapture, icon: AimOutlined }
-])
-function onModeChange(v: string | number | boolean) {
-  sidebarMode.value = String(v) as SidebarMode
-}
-
-const isSidePanel = computed(() => {
-  if (typeof location === 'undefined') return false
-  return /\/sidepanel\b/.test(location.pathname)
-})
-
-const sidebarOpen = ref(false)
-function toggleSidebar() { sidebarOpen.value = !sidebarOpen.value }
-
 // Logo asset — 32px is a good match for the sidebar header (~56px tall);
 // it scales up crisply via the browser's natural image smoothing for the
 // sidebar's 28px display size. Vite copies /public/* to the bundle root,
@@ -100,33 +77,12 @@ const logoSrc = computed(() => {
   if (c?.runtime?.getURL) return c.runtime.getURL('icons/32.png')
   return '/icons/32.png'
 })
-
-function openOptionsPage() {
-  const c = (globalThis as any).chrome
-  c?.runtime?.openOptionsPage?.()
-  // Side Panel has no API to close itself, but `window.close()` inside a
-  // side panel context dismisses it. We do this AFTER opening options so
-  // the user isn't left staring at an empty panel while the new tab loads.
-  if (isSidePanel.value) {
-    try { window.close() } catch { /* ignore — not in side panel context */ }
-  }
-}
 </script>
 
 <template>
-  <div class="app-layout" :class="{ 'app-layout-side-panel': isSidePanel }">
-    <div v-if="isSidePanel" class="topbar-narrow">
-      <Button size="small" type="text" @click="toggleSidebar" title="Toggle sidebar">
-        <template #icon><MenuOutlined /></template>
-      </Button>
-      <img :src="logoSrc" alt="Pico API" class="narrow-logo" />
-      <span class="narrow-title">{{ t.appName }}</span>
-      <Button size="small" type="text" @click="openOptionsPage" title="Open full page">
-        <template #icon><FullscreenOutlined /></template>
-      </Button>
-    </div>
-    <aside class="sidebar" :class="{ 'sidebar-open': isSidePanel && sidebarOpen }">
-      <div v-if="!isSidePanel" class="sidebar-header">
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="sidebar-header">
         <div class="sidebar-title-wrap">
           <img :src="logoSrc" alt="Pico API" class="sidebar-logo" />
           <span class="sidebar-title">{{ t.appName }}</span>
@@ -149,21 +105,9 @@ function openOptionsPage() {
           </Button>
         </div>
       </div>
-      <div class="sidebar-mode">
-        <Segmented
-          block
-          size="small"
-          :value="sidebarMode"
-          :options="modeOptions"
-          @change="onModeChange"
-        />
-      </div>
-      <EnvironmentSelector v-show="sidebarMode === 'requests'" />
+      <EnvironmentSelector />
       <div class="sidebar-body">
-        <template v-if="sidebarMode === 'requests'">
-          <CollectionTree />
-        </template>
-        <CapturePanel v-else />
+        <CollectionTree />
       </div>
       <div class="sidebar-footer">
         <Button size="small" block @click="settingsOpen = true" class="settings-btn">
@@ -172,12 +116,6 @@ function openOptionsPage() {
         </Button>
       </div>
     </aside>
-    <div
-      v-if="isSidePanel"
-      class="sidebar-backdrop"
-      :class="{ 'sidebar-backdrop-visible': sidebarOpen }"
-      @click="sidebarOpen = false"
-    />
     <main class="main">
       <RequestEditor ref="requestEditor" />
       <ResponsePanel @resend="onResend" />
@@ -294,12 +232,6 @@ function openOptionsPage() {
   min-height: 0;
   overflow: auto;
 }
-.sidebar-mode {
-  padding: var(--space-4) var(--space-5);
-  border-bottom: 1px solid var(--border-base);
-  flex: 0 0 auto;
-  background: var(--bg-base);
-}
 .sidebar-footer {
   padding: var(--space-4) var(--space-5);
   border-top: 1px solid var(--border-base);
@@ -316,74 +248,5 @@ function openOptionsPage() {
   min-width: 0;
   min-height: 0;
   background: var(--bg-base);
-}
-
-/* ----- Side Panel narrow layout -----
- * In side-panel context the sidebar hides off-screen by default and
- * slides in over the content via the .sidebar-open toggle. A scrim
- * behind it dismisses on click. The .topbar-narrow above the main
- * area shows the hamburger + title + "open full page" button.
- */
-.topbar-narrow {
-  display: none; /* only in side-panel mode (below) */
-}
-.app-layout-side-panel {
-  flex-direction: column;
-}
-.app-layout-side-panel .sidebar {
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  z-index: 50;
-  transform: translateX(-100%);
-  transition: transform 0.2s ease;
-  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
-}
-.app-layout-side-panel .sidebar-open {
-  transform: translateX(0);
-}
-.app-layout-side-panel .topbar-narrow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-3) var(--space-5);
-  background: var(--bg-base);
-  border-bottom: 1px solid var(--border-base);
-  flex: 0 0 auto;
-  height: var(--header-height);
-  box-sizing: border-box;
-}
-.app-layout-side-panel .main {
-  flex: 1;
-  /* Stack under topbar-narrow. AppLayout uses flex column in side-panel
-     mode (set above), so this just lets main fill remaining space. */
-}
-.narrow-title {
-  flex: 1;
-  font-size: var(--fs-base);
-  font-weight: var(--fw-semibold);
-  color: var(--text-primary);
-  letter-spacing: -0.01em;
-}
-.narrow-logo {
-  width: 22px;
-  height: 22px;
-  display: block;
-  flex: 0 0 auto;
-  border-radius: 5px;
-}
-.sidebar-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.3);
-  z-index: 40;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.2s ease;
-}
-.sidebar-backdrop-visible {
-  opacity: 1;
-  pointer-events: auto;
 }
 </style>

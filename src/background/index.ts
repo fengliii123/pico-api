@@ -1,5 +1,5 @@
-// Background service worker: privileged fetch (no CORS), cookie injection, capture.
-// Messages: { type: 'fetch'|'fetch:abort'|'capture:*', id, ... } → { id, ok, result|error }.
+// Background service worker: privileged fetch (no CORS) and cookie injection.
+// Messages: { type: 'fetch'|'fetch:abort'|'fetch:streaming', id, ... } → { id, ok, result|error }.
 
 import type { ResponseError, ResponseResult } from '../core/types'
 import type { NormalizedRequest, BridgeNormalizedRequest } from '../core/http'
@@ -8,16 +8,8 @@ import { readCappedResponseBodyForBridge } from '../core/fetchResponseBody'
 import { mergeAbortSignals } from '../core/abortSignals'
 import { parseSetCookies } from '../core/cookies'
 import type { ParsedCookie } from '../core/cookies'
-import {
-  startCapture,
-  stopCapture,
-  getCaptured,
-  getCaptureStatus,
-  clearCaptured,
-  type CaptureFilterMode
-} from './capture'
 
-type MessageType = 'fetch' | 'fetch:abort' | 'fetch:streaming' | 'capture:start' | 'capture:stop' | 'capture:list' | 'capture:status' | 'capture:clear'
+type MessageType = 'fetch' | 'fetch:abort' | 'fetch:streaming'
 
 interface FetchAbortPayload {
   type: 'fetch:abort'
@@ -38,17 +30,7 @@ interface FetchStreamingPayload {
   options?: { sendBrowserCookies?: boolean }
 }
 
-interface CapturePayload {
-  type: 'capture:start' | 'capture:stop' | 'capture:list' | 'capture:status' | 'capture:clear'
-  id: string
-  tabId: number
-  // Only 'capture:start' reads this. Defaults to 'api-only' on the
-  // engine side if missing — kept optional so older UIs that don't send
-  // it still work.
-  filterMode?: CaptureFilterMode
-}
-
-type InboundMessage = FetchPayload | FetchAbortPayload | FetchStreamingPayload | CapturePayload
+type InboundMessage = FetchPayload | FetchAbortPayload | FetchStreamingPayload
 
 // In-flight fetch abort handles — keyed by the bridge message id.
 const inflightFetches = new Map<string, AbortController>()
@@ -85,9 +67,6 @@ const c = (globalThis as any).chrome as
         openOptionsPage: () => void
       }
       action: { onClicked: { addListener: (cb: (tab: any) => void) => void } }
-      sidePanel?: {
-        setPanelBehavior: (behavior: { openPanelOnActionClick: boolean }) => Promise<void>
-      }
       cookies?: {
         getAll: (details: { url: string }) => Promise<Array<{ name: string; value: string }>>
       }
@@ -332,50 +311,18 @@ if (c) {
     return true
   })
 
-  // Clicking the extension icon opens the side panel. The side panel's
-  // top-right fullscreen button calls openOptionsPage() to pop out into
-  // a full browser tab when the user wants more room.
-  if (c.sidePanel?.setPanelBehavior) {
-    c.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {
-      // Permission missing or old Chrome — fall back to opening options.
-      c.action.onClicked.addListener(() => {
-        c.runtime.openOptionsPage()
-      })
-    })
-  } else {
-    // sidePanel API unavailable — open the options page on click instead.
-    c.action.onClicked.addListener(() => {
-      c.runtime.openOptionsPage()
-    })
-  }
+  // Clicking the extension icon opens the options page in a new tab.
+  c.action.onClicked.addListener(() => {
+    c.runtime.openOptionsPage()
+  })
 }
 
 // Single dispatch entry point. Routes by `msg.type` to the fetch proxy
-// or the capture engine. Each handler returns a unified success/error
+// or the streaming fetch. Each handler returns a unified success/error
 // reply so the client side only needs one switch on `reply.ok`.
 async function dispatch(msg: InboundMessage): Promise<{ id: string; ok: true; result: any } | { id: string; ok: false; error: ResponseError }> {
   const type = (msg as any).type as MessageType | undefined
   try {
-    if (type === 'capture:start') {
-      const payload = msg as CapturePayload
-      await startCapture(payload.tabId, payload.filterMode ?? 'api-only')
-      return { id: msg.id, ok: true, result: { status: getCaptureStatus(payload.tabId) } }
-    }
-    if (type === 'capture:stop') {
-      await stopCapture((msg as CapturePayload).tabId)
-      return { id: msg.id, ok: true, result: { status: 'stopped' } }
-    }
-    if (type === 'capture:list') {
-      const requests = getCaptured((msg as CapturePayload).tabId)
-      return { id: msg.id, ok: true, result: { requests, status: getCaptureStatus((msg as CapturePayload).tabId) } }
-    }
-    if (type === 'capture:status') {
-      return { id: msg.id, ok: true, result: { status: getCaptureStatus((msg as CapturePayload).tabId) } }
-    }
-    if (type === 'capture:clear') {
-      clearCaptured((msg as CapturePayload).tabId)
-      return { id: msg.id, ok: true, result: { status: getCaptureStatus((msg as CapturePayload).tabId) } }
-    }
     if (type === 'fetch:abort') {
       abortInflightFetch(msg.id)
       return { id: msg.id, ok: true, result: { aborted: true } }

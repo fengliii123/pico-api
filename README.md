@@ -2,8 +2,7 @@
 
 # Pico API
 
-A tiny REST client that lives in your Chrome side panel. Send requests,
-capture traffic, and debug APIs without leaving the tab.
+A tiny REST client for Chrome. Send requests and debug APIs from a full browser tab.
 
 > `pico-` is the SI prefix for 10⁻¹² — the smallest meaningful unit.
 > We aim to be the smallest REST client that still feels useful.
@@ -46,7 +45,6 @@ root has no `index.html` — visiting `http://localhost:5173/` returns 404,
 you have to navigate to a specific entry:
 
 - Main UI:     <http://localhost:5173/src/options/index.html>
-- Side panel:  <http://localhost:5173/src/sidepanel/index.html>
 - Sandbox:     <http://localhost:5173/src/sandbox/index.html>
 
 ## Loading as extension

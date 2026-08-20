@@ -158,39 +158,6 @@ export interface RequestScripts {
   postResponse: string
 }
 
-//
-// CapturedRequest mirrors the bits of a network request that the
-// background service worker lifts out of the Chrome DevTools Protocol
-// (Network domain). The shape is intentionally close to DraftRequest,
-// but it lives as its own type because the capture path has fields
-// (CDP requestId, tabId, response details) that don't belong in a
-// user-editable request.
-export interface CapturedRequest {
-  // Batch id shared by every request captured during one start→stop
-  // session. Makes it easy to clear a whole capture run at once.
-  captureId: string
-  // Chrome DevTools Protocol requestId — lets us match responses to
-  // their originating requests while the events stream in.
-  cdpRequestId: string
-  tabId: number
-  timestamp: number
-  method: string
-  url: string
-  headers: Array<[string, string]>
-  // Raw request body for POST/PUT/PATCH. Empty for GET/HEAD.
-  postData?: string
-  // Filled in when Network.responseReceived fires. Body is fetched
-  // lazily on save (most captured requests never get inspected).
-  response?: {
-    status: number
-    statusText: string
-    headers: Array<[string, string]>
-    mimeType: string
-  }
-}
-
-export type CaptureStatus = 'idle' | 'capturing' | 'stopped' | 'error'
-
 // View-model for the right-hand editor. Independent of SavedRequest so
 // unsaved edits can live here without touching IndexedDB.
 export interface DraftRequest {

@@ -202,7 +202,7 @@ watch(state, async () => {
               <span v-else class="tab-badge tab-badge-pass">{{ streamingTestResults.length }}</span>
             </span>
           </template>
-          <TestResults :results="streamingTestResults" />
+          <ResponseTestResults :test-results="streamingTestResults" />
         </Tabs.TabPane>
       </Tabs>
     </div>

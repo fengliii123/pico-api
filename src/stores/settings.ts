@@ -4,7 +4,6 @@ import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 
 export type Theme = 'light' | 'dark' | 'eye'
-export type CaptureFilterMode = 'api-only' | 'all'
 
 export const useSettingsStore = defineStore('settings', () => {
   const autoSaveHistory = ref(load('autoSaveHistory', true))
@@ -17,18 +16,9 @@ export const useSettingsStore = defineStore('settings', () => {
   // preference but users said it looked identical to 'light' in most setups.
   // Migrate any stored 'auto' value to 'light' so the switch stays sane.
   const theme = ref<Theme>(migrateTheme(load<Theme>('theme', 'light')))
-  // Capture filter: 'api-only' (default) keeps the capture list to
-  //   fetch() + XMLHttpRequest traffic — what users actually care about
-  //   when debugging APIs. 'all' includes scripts, stylesheets, images,
-  //   fonts, analytics pings, etc. The mode takes effect on the next
-  //   startCapture(); an in-flight session keeps its existing filter.
-  const captureFilterMode = ref<CaptureFilterMode>(
-    load<CaptureFilterMode>('captureFilterMode', 'api-only')
-  )
 
   watch(autoSaveHistory, () => save('autoSaveHistory', autoSaveHistory.value))
   watch(sendBrowserCookies, () => save('sendBrowserCookies', sendBrowserCookies.value))
-  watch(captureFilterMode, () => save('captureFilterMode', captureFilterMode.value))
   watch(theme, () => {
     save('theme', theme.value)
     applyTheme(theme.value)
@@ -52,7 +42,7 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   }
 
-  return { autoSaveHistory, sendBrowserCookies, theme, captureFilterMode }
+  return { autoSaveHistory, sendBrowserCookies, theme }
 })
 
 function migrateTheme(v: Theme | 'auto'): Theme {
