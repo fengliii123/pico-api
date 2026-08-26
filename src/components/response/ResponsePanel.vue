@@ -118,6 +118,27 @@ const currentUrl = computed(() => reqStore.draft.url)
 
 const activeTab = ref('body')
 
+// The tests / cookies tab panes are v-if'd away when a request without
+// them loads (e.g. switching from a request with tests to one without).
+// Without this fallback the active key would dangle on a removed pane —
+// no tab selected, blank content — until the user clicks a tab manually.
+const paneVisible = (key: string): boolean => {
+  if (key === 'body' || key === 'headers') return true
+  if (key === 'cookies') return state.value.kind === 'success' && cookies.value.length > 0
+  if (key === 'tests') {
+    return state.value.kind === 'streaming'
+      ? streamingTestResults.value.length > 0
+      : hasScriptOutput.value
+  }
+  return false
+}
+watch(
+  () => [state.value.kind, streamingTestResults.value.length, hasScriptOutput.value, cookies.value.length],
+  () => {
+    if (!paneVisible(activeTab.value)) activeTab.value = 'body'
+  }
+)
+
 const isHttpError = computed(() => {
   return state.value.kind === 'success' && state.value.result.status >= 400
 })

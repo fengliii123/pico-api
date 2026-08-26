@@ -52,6 +52,18 @@ function nextVariablesArray(
   return next
 }
 
+// Overlay request-scoped local variables (pm.variables.set from the
+// pre-request script) onto the active environment variables. Local values
+// must resolve in the request URL/headers/body but are never persisted.
+function withLocalVars(
+  base: EnvironmentVariable[],
+  changes: VariableChange[]
+): EnvironmentVariable[] {
+  const local = changes.filter(c => c.scope === 'local')
+  if (local.length === 0) return base
+  return nextVariablesArray(base, local)
+}
+
 function requestPatchFromScriptResult(
   after: PmApi['request'],
   before: NormalizedRequest
@@ -127,8 +139,8 @@ export function useRequestExecution() {
   async function runPreRequest(
     script: string,
     normalized: NormalizedRequest
-  ): Promise<{ logs: string[]; renormalize: boolean; requestPatch: Partial<NormalizedRequest> | null }> {
-    if (!script) return { logs: [], renormalize: false, requestPatch: null }
+  ): Promise<{ logs: string[]; renormalize: boolean; requestPatch: Partial<NormalizedRequest> | null; varChanges: VariableChange[] }> {
+    if (!script) return { logs: [], renormalize: false, requestPatch: null, varChanges: [] }
     const result = await runScript(
       script,
       {
@@ -146,7 +158,8 @@ export function useRequestExecution() {
     return {
       logs: result.logs,
       renormalize: result.varChanges.length > 0,
-      requestPatch: requestPatchFromScriptResult(result.request, normalized)
+      requestPatch: requestPatchFromScriptResult(result.request, normalized),
+      varChanges: result.varChanges
     }
   }
 
@@ -204,26 +217,10 @@ export function useRequestExecution() {
     inflightAbort = new AbortController()
     const { signal } = inflightAbort
 
-    // Pre-flight: catch unresolved {{var}} placeholders BEFORE we hit
-    // the network. Without this check, the request would silently go
-    // out with `{{baseUrl}}` in the URL.
-    const unresolved = findUnresolvedVariables(
-      draft,
-      envStore.activeVariables,
-      envStore.globals.variables
-    )
-    if (unresolved.length > 0) {
-      const names = unresolved.map(n => `{{${n}}}`).join(', ')
-      const envName = envStore.activeEnvironment?.name ?? t.value.errNoEnvironment
-      resStore.setError({
-        message: fmt(t.value.errUnresolvedVariables, { names, envName }),
-        errorKind: 'connect'
-      })
-      return
-    }
-
     // Pre-validate URL before scripts run (so scripts don't modify an
-    // invalid URL).
+    // invalid URL). Variables are NOT fully checked yet — the pre-request
+    // script may define variables the URL references (e.g. a timestamp),
+    // so the unresolved-variable gate runs after the script below.
     let normalized: NormalizedRequest
     try {
       normalized = normalize(draft, envStore.activeVariables, envStore.globals.variables)
@@ -270,8 +267,9 @@ export function useRequestExecution() {
 
     try {
       const preRequest = await runPreRequest(draft.scripts?.preRequest ?? '', normalized)
+      const activeWithLocal = withLocalVars(envStore.activeVariables, preRequest.varChanges)
       if (preRequest.renormalize) {
-        normalized = normalize(draft, envStore.activeVariables, envStore.globals.variables)
+        normalized = normalize(draft, activeWithLocal, envStore.globals.variables)
         if (!validateNormalizedUrl('Pre-request script produced an invalid URL')) return
       }
       if (preRequest.requestPatch) {
@@ -279,6 +277,25 @@ export function useRequestExecution() {
         if (preRequest.requestPatch.url && !validateNormalizedUrl('Pre-request script produced an invalid URL')) {
           return
         }
+      }
+
+      // Catch unresolved {{var}} placeholders BEFORE we hit the network —
+      // after the pre-request script so variables it defines (environment
+      // OR local pm.variables.set) are accepted. Without this check, the
+      // request would silently go out with `{{baseUrl}}` in the URL.
+      const unresolved = findUnresolvedVariables(
+        draft,
+        activeWithLocal,
+        envStore.globals.variables
+      )
+      if (unresolved.length > 0) {
+        const names = unresolved.map(n => `{{${n}}}`).join(', ')
+        const envName = envStore.activeEnvironment?.name ?? t.value.errNoEnvironment
+        resStore.setError({
+          message: fmt(t.value.errUnresolvedVariables, { names, envName }),
+          errorKind: 'connect'
+        })
+        return
       }
 
       resStore.setStreaming(normalized.headers?.['accept'] ?? '')
@@ -323,9 +340,11 @@ export function useRequestExecution() {
       }
 
       // Forward whatever shape we got so the panel can render the
-      // right hint.
+      // right hint. Timeouts carry a raw English message from the fetch
+      // layer — localize it here.
       if (e?.errorKind) {
-        resStore.setError(e, testResults, { preRequest: [], postResponse: postLogs })
+        const err = e.errorKind === 'timeout' ? { ...e, message: t.value.errTimeout } : e
+        resStore.setError(err, testResults, { preRequest: [], postResponse: postLogs })
       } else {
         resStore.setError({ message: e?.message ?? t.value.errRequestFailed }, testResults, { preRequest: [], postResponse: postLogs })
       }

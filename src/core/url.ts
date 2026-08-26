@@ -72,6 +72,16 @@ export function extractParamsFromUrl(baseUrl: string): { url: string; params: Ke
   return { url: result, params }
 }
 
+// encodeURIComponent, but {{var}} placeholders stay readable. Placeholders
+// are resolved (and then encoded as part of their values) at send time —
+// encoding them here would leave the URL bar showing %7B%7Bts%7D%7D.
+function encodePreservingPlaceholders(s: string): string {
+  return s
+    .split(/(\{\{[^}]+\}\})/)
+    .map(part => (part.startsWith('{{') ? part : encodeURIComponent(part)))
+    .join('')
+}
+
 // Rebuild a URL from the base (without query) + a list of enabled params.
 // Used when the user edits the Params tab and wants the changes reflected
 // back into the URL bar.
@@ -79,7 +89,7 @@ export function joinParamsToUrl(baseUrl: string, params: KeyValueRow[]): string 
   const trimmed = baseUrl.trim()
   const enabled = params.filter(p => p.enabled && p.key.trim() !== '')
   if (enabled.length === 0) return trimmed
-  const qs = enabled.map(p => `${encodeURIComponent(p.key)}=${encodeURIComponent(p.value)}`).join('&')
+  const qs = enabled.map(p => `${encodePreservingPlaceholders(p.key)}=${encodePreservingPlaceholders(p.value)}`).join('&')
   return `${trimmed}?${qs}`
 }
 

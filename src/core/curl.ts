@@ -38,9 +38,14 @@ function shellQuote(tokens: string[]): string {
 }
 
 
-export function toCurl(req: DraftRequest & { url: string }, opts: { method: string; headers: Record<string, string>; body?: BodyInit | null }): string {
+export function toCurl(
+  req: DraftRequest & { url: string },
+  opts: { url?: string; method: string; headers: Record<string, string>; body?: BodyInit | null }
+): string {
   const lines: string[] = []
-  lines.push(`curl ${shellQuote([req.url])}`)
+  // Prefer the normalized URL ({{vars}} resolved, params joined) so the
+  // exported command is runnable as-is; fall back to the raw draft URL.
+  lines.push(`curl ${shellQuote([opts.url ?? req.url])}`)
 
   if (opts.method && opts.method !== 'GET') {
     lines.push(`  -X ${opts.method}`)

@@ -259,14 +259,23 @@ async function runStreamingFetch(
         const { done, value } = await reader.read()
         if (done) break
 
+        const remaining = maxBytes > 0 ? maxBytes - received : Infinity
+        if (value.byteLength >= remaining) {
+          // The cap falls inside this chunk: forward only the bytes within
+          // the cap and flush the decoder (non-stream mode) so a multi-byte
+          // UTF-8 sequence never gets cut mid-character.
+          const capped = value.subarray(0, Math.max(0, remaining))
+          port?.postMessage({ type: 'chunk', chunk: decoder.decode(capped) })
+          truncated = true
+          // Chrome may reject reader.cancel() ("signal is aborted without
+          // reason") when the fetch carries an AbortSignal — the bytes are
+          // already forwarded, so ignore the cancel result.
+          try { await reader.cancel() } catch { /* ignore */ }
+          break
+        }
         const chunk = decoder.decode(value, { stream: true })
         received += value.byteLength
         port?.postMessage({ type: 'chunk', chunk })
-        if (maxBytes > 0 && received >= maxBytes) {
-          truncated = true
-          await reader.cancel()
-          break
-        }
       }
     } finally {
       reader.releaseLock()

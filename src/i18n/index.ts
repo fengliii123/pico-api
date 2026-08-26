@@ -492,6 +492,7 @@ export interface Translations {
   errInvalidUrlHostname: string
   errCouldNotParse: string
   errRequestFailed: string
+  errTimeout: string
 }
 
 const en: Translations = {
@@ -934,7 +935,8 @@ const en: Translations = {
   errInvalidUrl: 'Invalid URL: {message}',
   errInvalidUrlHostname: 'Invalid URL — hostname is empty.',
   errCouldNotParse: 'could not parse',
-  errRequestFailed: 'Request failed'
+  errRequestFailed: 'Request failed',
+  errTimeout: 'Request timed out'
 }
 
 const zhCN: Translations = {
@@ -1377,7 +1379,8 @@ const zhCN: Translations = {
   errInvalidUrl: '无效的 URL：{message}',
   errInvalidUrlHostname: '无效的 URL——主机名为空。',
   errCouldNotParse: '无法解析',
-  errRequestFailed: '请求失败'
+  errRequestFailed: '请求失败',
+  errTimeout: '请求超时'
 }
 
 export const translations: Record<Locale, Translations> = {

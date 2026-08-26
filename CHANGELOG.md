@@ -4,6 +4,57 @@ All notable changes to Pico API are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.5] — 2026-08-26
+
+Stability and polish release: streaming memory caps, Postman-compatible
+`pm.variables`, i18n error messages, narrow-window layout fixes, and a
+product landing page.
+
+### Added
+
+- **`pm.variables.get/set/unset`** in scripts: Postman-style request-scoped
+  local variables — resolved in the request URL/headers/body after the
+  pre-request script runs, never persisted (scope order local > environment
+  > globals).
+- **History batch delete**: multi-select checkboxes with a confirm dialog,
+  alongside the existing per-entry delete and clear-all.
+- **Empty-state actions**: the collection tree and response panel empty
+  states now offer "New Request" / "New Folder" / "Send" buttons.
+- **Product landing page** (`docs/`) with full SEO metadata (OG, Twitter
+  Card, JSON-LD), relocated privacy policy, and rewritten bilingual README.
+
+### Fixed
+
+- **Streaming responses now honor the max-response-size cap** — previously
+  the streaming path bypassed it entirely and grew without bound; oversized
+  streams are truncated at an exact byte boundary (multi-byte UTF-8 safe).
+- **Header names deduplicated case-insensitively** — `Content-Type` and
+  `content-type` no longer silently coexist; duplicates are surfaced as
+  virtual rows.
+- **Sandbox postMessage hardened**: both directions verify `event.source`,
+  so a foreign window can neither trigger script execution nor inject
+  results.
+- **Pre-request script variables usable in the URL**: the unresolved-variable
+  check now runs after the pre-request script instead of before it.
+- **Command palette close paths repaired** — Esc / overlay click / executing
+  a command previously left the palette open; focus is now also restored to
+  the previously focused element. `⌘K` now works while typing in an input.
+- **Timeouts surface as timeouts** — an aborted-by-timeout request showed
+  Chrome's raw "signal is aborted without reason"; it now reports a
+  localized timeout error with the matching hint.
+- **Import dialog no longer overflows** on narrow windows — the mode switch
+  and URL/file import actions are laid out on separate rows; the URL input
+  flexes to the available width.
+- **form-data file rows** no longer overflow narrow panels: the filename
+  cell shrinks with ellipsis truncation and column tracks use `minmax()`.
+- **Copy-as-cURL exports resolved variables** (previously raw `{{baseUrl}}`
+  placeholders), and `{{var}}` placeholders stay readable in the URL bar
+  instead of appearing percent-encoded.
+- **Response panel tab state**: switching from a request with test results
+  to one without no longer leaves the panel blank (dangling active tab).
+- Full functional test pass (26 unit tests) plus a number of smaller i18n
+  placeholder gaps closed (auth form, urlencoded table, JSON tree tooltip).
+
 ## [1.0.0] — 2026-07-08
 
 First Chrome Web Store release. Stable API surface, no known crashes, full

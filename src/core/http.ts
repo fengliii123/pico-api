@@ -384,22 +384,26 @@ async function executeStreamingViaBridge(
     reject = rej
   })
 
-  // Set up abort handling.
+  // Set up abort handling. `kind` distinguishes the user pressing Cancel
+  // from the request exceeding its configured timeout — both abort the
+  // fetch, but they must surface as different errors.
   let aborted = false
-  const abortHandler = () => {
+  const abortHandler = (kind: 'user' | 'timeout' = 'user') => {
     aborted = true
     try {
       chrome.runtime.sendMessage({ type: 'fetch:abort', id })
     } catch { /* ignore */ }
     if (port) port.disconnect()
-    reject({ message: 'Request aborted', errorKind: 'aborted' })
+    reject(kind === 'timeout'
+      ? { message: 'Request timed out', errorKind: 'timeout' }
+      : { message: 'Request aborted', errorKind: 'aborted' })
   }
   if (signal) {
     if (signal.aborted) {
       abortHandler()
       return promise
     }
-    signal.addEventListener('abort', abortHandler, { once: true })
+    signal.addEventListener('abort', () => abortHandler(), { once: true })
   }
 
   // Connect to background for streaming.
@@ -450,7 +454,7 @@ async function executeStreamingViaBridge(
   // Set up timeout.
   const timeout = req.settings?.timeout ?? 0
   const timeoutId = timeout > 0 ? setTimeout(() => {
-    abortHandler()
+    abortHandler('timeout')
   }, timeout) : null
 
   // Send streaming request to background.
@@ -597,14 +601,29 @@ async function executeStreamingDirect(
   const timeout = req.settings?.timeout ?? 0
   let timeoutId: ReturnType<typeof setTimeout> | undefined
   let timeoutCtrl: AbortController | undefined
+  let timedOut = false
   if (timeout > 0) {
     timeoutCtrl = new AbortController()
-    timeoutId = setTimeout(() => timeoutCtrl!.abort(), timeout)
+    timeoutId = setTimeout(() => {
+      timedOut = true
+      timeoutCtrl!.abort()
+    }, timeout)
   }
   const combined = mergeAbortSignals(rest.signal, timeoutCtrl?.signal)
   if (combined) init.signal = combined
 
-  const res = await fetch(req.url, init)
+  let res: Response
+  try {
+    res = await fetch(req.url, init)
+  } catch (e: any) {
+    // Both a timeout and the user pressing Cancel surface as AbortError —
+    // distinguish by who aborted (the app signal is only aborted by the
+    // user; the timeout controller only by the timer above).
+    if (timedOut || (e?.name === 'AbortError' && !rest.signal?.aborted)) {
+      throw { message: 'Request timed out', errorKind: 'timeout' } satisfies ResponseError
+    }
+    throw e
+  }
   if (timeoutId) clearTimeout(timeoutId)
 
   const reader = res.body?.getReader()
@@ -632,15 +651,26 @@ async function executeStreamingDirect(
         console.log('[executeStreaming] Direct: chunk', chunkCount, 'received, length:', value?.length)
         lastLogTime = Date.now()
       }
+      const remaining = maxBytes > 0 ? maxBytes - received : Infinity
+      if (value.byteLength >= remaining) {
+        // The cap falls inside this chunk: keep only the bytes within the
+        // cap and flush the decoder (non-stream mode) so a multi-byte
+        // UTF-8 sequence never gets cut mid-character.
+        const capped = value.subarray(0, Math.max(0, remaining))
+        const chunk = decoder.decode(capped)
+        onChunk(chunk)
+        fullText += chunk
+        truncated = true
+        // Chrome may reject reader.cancel() ("signal is aborted without
+        // reason") when the fetch has an AbortSignal attached — everything
+        // we need is already read, so the cancel result is irrelevant.
+        try { await reader.cancel() } catch { /* ignore */ }
+        break
+      }
       const chunk = decoder.decode(value, { stream: true })
       onChunk(chunk)
       fullText += chunk
       received += value.byteLength
-      if (maxBytes > 0 && received >= maxBytes) {
-        truncated = true
-        await reader.cancel()
-        break
-      }
     }
   } finally {
     reader.releaseLock()

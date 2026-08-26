@@ -337,6 +337,8 @@ function syncRawScroll() {
       <KeyValueTable
         :rows="urlencodedRows"
         row-kind="urlencoded"
+        :key-placeholder="t.key"
+        :value-placeholder="t.value"
         @update="(rows) => urlencodedRows = rows"
       />
     </div>
@@ -639,7 +641,9 @@ function syncRawScroll() {
 
 .fd-row {
   display: grid;
-  grid-template-columns: 28px 160px 1fr 80px 28px;
+  /* Columns shrink on narrow panels (minmax) instead of squeezing the
+   * value cell out of the panel — see .fd-file-cell min-width note. */
+  grid-template-columns: 28px minmax(96px, 160px) minmax(0, 1fr) minmax(56px, 80px) 28px;
   align-items: center;
   gap: 8px;
   padding: 4px 0;
@@ -648,7 +652,7 @@ function syncRawScroll() {
 /* Form-data header aligns with .fd-row grid */
 .fd-header {
   display: grid;
-  grid-template-columns: 28px 160px 1fr 80px 28px;
+  grid-template-columns: 28px minmax(96px, 160px) minmax(0, 1fr) minmax(56px, 80px) 28px;
   align-items: center;
   gap: 8px;
   padding: 8px 0;
@@ -661,6 +665,10 @@ function syncRawScroll() {
 }
 .fd-file-cell {
   flex: 1;
+  /* Grid items default to min-width:auto, so without this the cell can't
+   * shrink below its content and overflows the 1fr track (and the panel /
+   * modal around it) once filename + size + buttons get wide. */
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -670,7 +678,15 @@ function syncRawScroll() {
   border-radius: 4px;
   min-height: 32px;
 }
-.fd-file-name { font-weight: 500; }
+.fd-file-name {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Only the filename truncates — buttons and the size stay at full width. */
+.fd-file-cell > .ant-btn,
+.fd-file-size { flex-shrink: 0; }
 .fd-file-size { color: var(--text-tertiary); font-size: 12px; }
 
 /* Hidden file input. The visible "Choose File" button triggers its click()

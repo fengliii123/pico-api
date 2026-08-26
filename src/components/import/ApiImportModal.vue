@@ -450,36 +450,34 @@ function cancelNewFolder() {
           { value: 'apifox', label: t.apifox }
         ]"
       />
-      <div class="import-mode-actions">
-        <Input
-          v-if="mode === 'openapi'"
-          v-model:value="importUrl"
-          size="small"
-          :placeholder="t.importFromUrl"
-          class="import-url-input"
-          @press-enter="importFromUrl"
-        />
-        <Button
-          v-if="mode === 'openapi'"
-          size="small"
-          :loading="fetchingFromUrl"
-          :disabled="!importUrl.trim()"
-          @click="importFromUrl"
-        >
-          {{ t.importFromUrl }}
+    </div>
+
+    <div v-if="mode === 'openapi'" class="import-actions-row">
+      <Input
+        v-model:value="importUrl"
+        size="small"
+        :placeholder="t.importFromUrl"
+        class="import-url-input"
+        @press-enter="importFromUrl"
+      />
+      <Button
+        size="small"
+        :loading="fetchingFromUrl"
+        :disabled="!importUrl.trim()"
+        @click="importFromUrl"
+      >
+        {{ t.importFromUrl }}
+      </Button>
+      <Upload
+        :before-upload="onUploadBeforeUpload"
+        :show-upload-list="false"
+        accept=".json,.yaml,.yml,application/json"
+      >
+        <Button size="small">
+          <template #icon><UploadOutlined /></template>
+          {{ t.chooseFileEllipsis }}
         </Button>
-        <Upload
-          v-if="mode === 'openapi'"
-          :before-upload="onUploadBeforeUpload"
-          :show-upload-list="false"
-          accept=".json,.yaml,.yml,application/json"
-        >
-          <Button size="small">
-            <template #icon><UploadOutlined /></template>
-            {{ t.chooseFileEllipsis }}
-          </Button>
-        </Upload>
-      </div>
+      </Upload>
     </div>
 
     <div class="import-destination">
@@ -609,19 +607,21 @@ function cancelNewFolder() {
 
 <style scoped>
 .import-mode-row {
+  margin-bottom: 12px;
+}
+/* URL import + file import on their own row, below the mode switch —
+ * predictable on every width, and the URL input gets the full remaining
+ * width instead of a fixed 320px slice. */
+.import-actions-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 12px;
 }
-.import-mode-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
 .import-url-input {
-  width: 320px;
+  flex: 1;
+  min-width: 160px;
 }
 .import-destination {
   display: flex;

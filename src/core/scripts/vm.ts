@@ -26,6 +26,9 @@ export interface PmApi {
     unset(name: string): void
   }
   variables: {
+    get(name: string): string | undefined
+    set(name: string, value: string): void
+    unset(name: string): void
     replaceIn(text: string): string
   }
   response: {
@@ -84,7 +87,10 @@ export interface TestResult {
 // pre-request scripts run. This matches Postman's "scripts see their
 // own writes immediately, and the next request sees them too" semantics.
 export interface VariableChange {
-  scope: 'environment' | 'globals'
+  // 'local' matches Postman's pm.variables.* — request-scoped, never
+  // persisted, but applied when the request's {{var}} placeholders are
+  // (re-)resolved after the pre-request script runs.
+  scope: 'environment' | 'globals' | 'local'
   op: 'set' | 'unset'
   key: string
   value?: string
@@ -150,6 +156,7 @@ export function createPmApi(
 ): PmApi {
   const envTracked = createTrackedVars(envVars, 'environment')
   const globalsTracked = createTrackedVars(globals, 'globals')
+  const localTracked = createTrackedVars([], 'local')
   const pendingChanges: VariableChange[] = []
 
   // pm.variables.replaceIn — replace {{var}} placeholders. Reads through
@@ -166,9 +173,11 @@ export function createPmApi(
       if (token === '$timestamp') return String(Date.now())
       return crypto.randomUUID()
     }).replace(/\{\{([^}]+)\}\}/g, (_, name) => {
-      // envTracked.proxy reflects in-script writes (set inside the
-      // tracked proxy's `set` trap). globals overlay: env wins, then
-      // globals, then the raw {{name}} placeholder is preserved.
+      // local wins (Postman scope order), then env, then globals; an
+      // unknown name keeps its raw {{name}} placeholder.
+      if (Object.prototype.hasOwnProperty.call(localTracked.proxy, name)) {
+        return localTracked.proxy[name]!
+      }
       if (Object.prototype.hasOwnProperty.call(envTracked.proxy, name)) {
         return envTracked.proxy[name]!
       }
@@ -177,6 +186,15 @@ export function createPmApi(
       }
       return `{{${name}}}`
     })
+  }
+
+  // Postman's pm.variables.get reads across scopes (local > env > globals);
+  // set/unset only touch the request-scoped local layer.
+  function localGet(name: string): string | undefined {
+    if (Object.prototype.hasOwnProperty.call(localTracked.proxy, name)) return localTracked.proxy[name]
+    if (Object.prototype.hasOwnProperty.call(envTracked.proxy, name)) return envTracked.proxy[name]
+    if (Object.prototype.hasOwnProperty.call(globalsTracked.proxy, name)) return globalsTracked.proxy[name]
+    return undefined
   }
 
   // Build response object for tests
@@ -251,7 +269,18 @@ export function createPmApi(
         pendingChanges.push(...globalsTracked.changes.splice(0))
       }
     },
-    variables: { replaceIn },
+    variables: {
+      get: localGet,
+      set(name: string, value: string) {
+        localTracked.proxy[name] = value
+        pendingChanges.push(...localTracked.changes.splice(0))
+      },
+      unset(name: string) {
+        delete localTracked.proxy[name]
+        pendingChanges.push(...localTracked.changes.splice(0))
+      },
+      replaceIn
+    },
     response: {
       json() { return responseJson },
       text() { return responseText },
