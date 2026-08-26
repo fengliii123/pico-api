@@ -226,7 +226,7 @@ const KEY_HINT = '{{key}}'
   <Modal
     :open="open"
     :title="t.manageEnvironments"
-    width="1000px"
+    width="min(1000px, 94vw)"
     :footer="null"
     @cancel="open = false"
   >

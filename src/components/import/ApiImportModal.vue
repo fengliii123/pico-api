@@ -437,7 +437,7 @@ function cancelNewFolder() {
   <Modal
     :open="open"
     :title="t.importApi"
-    width="780px"
+    width="min(780px, 92vw)"
     :footer="null"
     @cancel="open = false"
   >

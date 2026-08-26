@@ -41,7 +41,7 @@ function dismiss() {
     :footer="null"
     :closable="false"
     :mask-closable="false"
-    width="480px"
+    width="min(480px, 92vw)"
     centered
   >
     <div class="onboarding">

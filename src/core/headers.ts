@@ -40,6 +40,10 @@ export function processHeaders(
 ): ProcessedHeaders {
   const headers: Record<string, string> = {}
   const dropped: ProcessedHeaders['dropped'] = []
+  // Header names are case-insensitive (RFC 9110). Two rows differing only in
+  // case would silently coexist in this record and then collapse into one
+  // (last-wins) inside fetch's Headers — flag the duplicate instead.
+  const seen = new Set<string>()
 
   for (const row of rows) {
     if (!row.enabled) continue
@@ -52,6 +56,11 @@ export function processHeaders(
       dropped.push({ key, value: row.value, reason: 'dropped-by-browser:browser-bans-this-header' })
       continue
     }
+    if (seen.has(lower)) {
+      dropped.push({ key, value: row.value, reason: 'dropped:duplicate-case-insensitive' })
+      continue
+    }
+    seen.add(lower)
     headers[key] = row.value
   }
 

@@ -3,8 +3,11 @@
 // Supports expand/collapse all, search within JSON, copy path
 
 import { computed, ref, watch } from 'vue'
-import { Button, Input, Tooltip } from 'ant-design-vue'
+import { Button, Input, Tooltip, message } from 'ant-design-vue'
 import { ExpandOutlined, ShrinkOutlined, CopyOutlined, SearchOutlined } from '@ant-design/icons-vue'
+import { useI18n } from '@/i18n/useI18n'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   data: any
@@ -106,7 +109,7 @@ async function copyPath(path: string) {
     copiedPath.value = path
     setTimeout(() => { copiedPath.value = null }, 1500)
   } catch {
-    // ignore
+    message.error(t.value.clipboardWriteFailed)
   }
 }
 
@@ -262,7 +265,7 @@ function collapseToDepth(maxDepth: number) {
               <span class="json-key">{{ getDisplayKey(node.path) || 'root' }}</span>
               <span class="json-colon">:</span>
               <span :class="['json-value', getValueClass(node)]">{{ formatValue(node) }}</span>
-              <Tooltip :title="copiedPath === node.path ? 'Copied!' : 'Copy path'">
+              <Tooltip :title="copiedPath === node.path ? t.copied : t.copyPath">
                 <Button
                   size="small"
                   type="text"

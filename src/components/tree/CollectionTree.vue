@@ -655,6 +655,10 @@ async function onAntdDrop(info: any) {
         <div class="tree-empty-icon"><FolderOutlined /></div>
         <p class="tree-empty-title">{{ t.noFoldersYet }}</p>
         <p class="tree-empty-hint">{{ t.createFolderHint }}</p>
+        <div class="tree-empty-actions">
+          <Button size="small" type="primary" @click="askNewRequest(null)">{{ t.newRequest }}</Button>
+          <Button size="small" @click="askNewFolder(null)">{{ t.newFolder }}</Button>
+        </div>
       </div>
     </div>
 
@@ -723,6 +727,11 @@ async function onAntdDrop(info: any) {
   color: var(--text-tertiary);
   opacity: 0.6;
   margin-bottom: var(--space-2);
+}
+.tree-empty-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
 }
 .tree-empty-title {
   margin: 0;

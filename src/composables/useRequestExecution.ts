@@ -17,6 +17,7 @@ import { history as historyDb } from '@/db'
 import { uid } from '@/utils/id'
 import type { EnvironmentVariable, HistoryEntry, ResponseResult } from '@/core/types'
 import { useI18n } from '@/i18n/useI18n'
+import { fmt } from '@/i18n'
 
 // Shared across composable instances so Cancel from the toolbar always
 // reaches the one in-flight HTTP request.
@@ -76,25 +77,25 @@ function requestPatchFromScriptResult(
   return Object.keys(patch).length > 0 ? patch : null
 }
 
-function assertHttpUrl(url: string, label: string): string | null {
-  try {
-    const u = new URL(url)
-    if (!/^https?:$/.test(u.protocol)) {
-      return `${label}: unsupported protocol ${u.protocol} — only http and https are allowed.`
-    }
-    if (!u.hostname) return `${label}: hostname is empty.`
-    return null
-  } catch (e: any) {
-    return `${label}: ${e?.message ?? 'could not parse URL'}`
-  }
-}
-
 export function useRequestExecution() {
   const { t } = useI18n()
   const reqStore = useRequestStore()
   const resStore = useResponseStore()
   const envStore = useEnvironmentStore()
   const settingsStore = useSettingsStore()
+
+  function assertHttpUrl(url: string, label: string): string | null {
+    try {
+      const u = new URL(url)
+      if (!/^https?:$/.test(u.protocol)) {
+        return fmt(t.value.errUnsupportedProtocol, { label, protocol: u.protocol })
+      }
+      if (!u.hostname) return fmt(t.value.errEmptyHostname, { label })
+      return null
+    } catch (e: any) {
+      return fmt(t.value.errUrlParse, { label, message: e?.message ?? t.value.errCouldNotParseUrl })
+    }
+  }
 
   // Persist script-driven variable writes back to the env / globals
   // stores. This is what makes "post-response script sets the token,
@@ -213,12 +214,9 @@ export function useRequestExecution() {
     )
     if (unresolved.length > 0) {
       const names = unresolved.map(n => `{{${n}}}`).join(', ')
-      const envName = envStore.activeEnvironment?.name ?? 'No Environment'
+      const envName = envStore.activeEnvironment?.name ?? t.value.errNoEnvironment
       resStore.setError({
-        message:
-          `Unresolved variable${unresolved.length > 1 ? 's' : ''}: ${names}. ` +
-          `Activate an environment that defines ${names}, or add ${names} to your active environment's variables. ` +
-          `(Active: ${envName}.)`,
+        message: fmt(t.value.errUnresolvedVariables, { names, envName }),
         errorKind: 'connect'
       })
       return
@@ -231,7 +229,7 @@ export function useRequestExecution() {
       normalized = normalize(draft, envStore.activeVariables, envStore.globals.variables)
     } catch (e: any) {
       resStore.setError({
-        message: `Invalid request: ${e?.message ?? 'could not normalize'}`,
+        message: fmt(t.value.errInvalidRequest, { message: e?.message ?? t.value.errCouldNotNormalize }),
         errorKind: 'connect'
       })
       return
@@ -241,21 +239,21 @@ export function useRequestExecution() {
       const u = new URL(normalized.url)
       if (!/^https?:$/.test(u.protocol)) {
         resStore.setError({
-          message: `Unsupported protocol: ${u.protocol} — only http and https are allowed.`,
+          message: fmt(t.value.errUnsupportedProtocol, { label: 'URL', protocol: u.protocol }),
           errorKind: 'connect'
         })
         return
       }
       if (!u.hostname) {
         resStore.setError({
-          message: 'Invalid URL — hostname is empty.',
+          message: t.value.errInvalidUrlHostname,
           errorKind: 'connect'
         })
         return
       }
     } catch (e: any) {
       resStore.setError({
-        message: `Invalid URL: ${e?.message ?? 'could not parse'}`,
+        message: fmt(t.value.errInvalidUrl, { message: e?.message ?? t.value.errCouldNotParse }),
         errorKind: 'connect'
       })
       return
@@ -329,7 +327,7 @@ export function useRequestExecution() {
       if (e?.errorKind) {
         resStore.setError(e, testResults, { preRequest: [], postResponse: postLogs })
       } else {
-        resStore.setError({ message: e?.message ?? 'Request failed' }, testResults, { preRequest: [], postResponse: postLogs })
+        resStore.setError({ message: e?.message ?? t.value.errRequestFailed }, testResults, { preRequest: [], postResponse: postLogs })
       }
     } finally {
       if (inflightAbort?.signal === signal) inflightAbort = null

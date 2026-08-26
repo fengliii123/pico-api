@@ -468,6 +468,30 @@ export interface Translations {
   optional: string
   saveToCollection: string
   responseTestsTab: string
+
+  // Misc placeholders
+  paramName: string
+  myApiRequest: string
+  myApi: string
+  authPrefixExample: string
+  authBearerDefault: string
+  deleteSelected: string
+  deleteSelectedConfirm: string
+  copyPath: string
+
+  // Request pipeline error messages (useRequestExecution)
+  errUnsupportedProtocol: string
+  errEmptyHostname: string
+  errUrlParse: string
+  errCouldNotParseUrl: string
+  errUnresolvedVariables: string
+  errNoEnvironment: string
+  errInvalidRequest: string
+  errCouldNotNormalize: string
+  errInvalidUrl: string
+  errInvalidUrlHostname: string
+  errCouldNotParse: string
+  errRequestFailed: string
 }
 
 const en: Translations = {
@@ -886,7 +910,31 @@ const en: Translations = {
   shortcutCloseModal: 'Close Modal / Panel',
   optional: 'optional',
   saveToCollection: 'Save to collection',
-  responseTestsTab: 'Tests'
+  responseTestsTab: 'Tests',
+
+  // Misc placeholders
+  paramName: 'Parameter name',
+  myApiRequest: 'My API request',
+  myApi: 'My API',
+  authPrefixExample: 'e.g. Token for Bearer, leave empty for none',
+  authBearerDefault: 'Bearer (default)',
+  deleteSelected: 'Delete selected ({n})',
+  deleteSelectedConfirm: 'Delete the {n} selected history entries?',
+  copyPath: 'Copy path',
+
+  // Request pipeline error messages (useRequestExecution)
+  errUnsupportedProtocol: '{label}: unsupported protocol {protocol} — only http and https are allowed.',
+  errEmptyHostname: '{label}: hostname is empty.',
+  errUrlParse: '{label}: {message}',
+  errCouldNotParseUrl: 'could not parse URL',
+  errUnresolvedVariables: 'Unresolved variables: {names}. Activate an environment that defines {names}, or add {names} to your active environment\'s variables. (Active: {envName}.)',
+  errNoEnvironment: 'No Environment',
+  errInvalidRequest: 'Invalid request: {message}',
+  errCouldNotNormalize: 'could not normalize',
+  errInvalidUrl: 'Invalid URL: {message}',
+  errInvalidUrlHostname: 'Invalid URL — hostname is empty.',
+  errCouldNotParse: 'could not parse',
+  errRequestFailed: 'Request failed'
 }
 
 const zhCN: Translations = {
@@ -1305,7 +1353,31 @@ const zhCN: Translations = {
   shortcutCloseModal: '关闭弹窗 / 面板',
   optional: '可选',
   saveToCollection: '保存到集合',
-  responseTestsTab: '测试'
+  responseTestsTab: '测试',
+
+  // Misc placeholders
+  paramName: '参数名',
+  myApiRequest: '我的 API 请求',
+  myApi: '我的 API',
+  authPrefixExample: '例如 Token（Bearer 前缀），留空表示不加前缀',
+  authBearerDefault: 'Bearer（默认）',
+  deleteSelected: '删除所选（{n}）',
+  deleteSelectedConfirm: '确定删除所选的 {n} 条历史记录吗？',
+  copyPath: '复制路径',
+
+  // Request pipeline error messages (useRequestExecution)
+  errUnsupportedProtocol: '{label}：不支持的协议 {protocol}——仅允许 http 和 https。',
+  errEmptyHostname: '{label}：主机名为空。',
+  errUrlParse: '{label}：{message}',
+  errCouldNotParseUrl: '无法解析 URL',
+  errUnresolvedVariables: '存在未解析的变量：{names}。请激活定义了 {names} 的环境，或将 {names} 添加到当前环境的变量中。（当前环境：{envName}。）',
+  errNoEnvironment: '无环境',
+  errInvalidRequest: '无效的请求：{message}',
+  errCouldNotNormalize: '无法规范化',
+  errInvalidUrl: '无效的 URL：{message}',
+  errInvalidUrlHostname: '无效的 URL——主机名为空。',
+  errCouldNotParse: '无法解析',
+  errRequestFailed: '请求失败'
 }
 
 export const translations: Record<Locale, Translations> = {

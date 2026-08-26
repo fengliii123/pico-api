@@ -121,7 +121,7 @@ function download() {
   <Modal
     :open="open"
     :title="t.exportAsOpenapi"
-    width="780px"
+    width="min(780px, 92vw)"
     :footer="null"
     @cancel="open = false"
   >
@@ -145,7 +145,7 @@ function download() {
       <label class="export-label">{{ t.title }}</label>
       <Input
         v-model:value="title"
-        :placeholder="scope === 'single' ? 'My API request' : 'My API'"
+        :placeholder="scope === 'single' ? t.myApiRequest : t.myApi"
       />
     </div>
 

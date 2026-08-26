@@ -5,7 +5,7 @@
 
 import { computed, nextTick, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import { Spin, Tabs } from 'ant-design-vue'
+import { Spin, Tabs, Button } from 'ant-design-vue'
 import { WarningFilled } from '@ant-design/icons-vue'
 import { useResponseStore } from '@/stores/response'
 import { useRequestStore } from '@/stores/request'
@@ -19,6 +19,12 @@ import { useI18n } from '@/i18n/useI18n'
 const { t } = useI18n()
 const resStore = useResponseStore()
 const reqStore = useRequestStore()
+
+// 'resend' fires the current draft's send() (wired in AppLayout); used by
+// the idle-state Send button and available for retry affordances.
+const emit = defineEmits<{
+  (e: 'resend'): void
+}>()
 // `storeToRefs(state)` gives us a real Ref<ResponseState> rather than a
 // computed getter. TS can then narrow the discriminated union through
 // `state.kind === 'success'` checks inside template expressions.
@@ -68,11 +74,12 @@ function scrollToBottom() {
   el.scrollTop = el.scrollHeight
 }
 
-// Watch chunks for auto-scroll
-watch(streamingChunks, async () => {
+// Watch chunk count for auto-scroll (chunks are pushed in place, so watch
+// the length — not the array reference).
+watch(() => streamingChunks.value.length, async () => {
   await nextTick()
   scrollToBottom()
-}, { deep: true })
+})
 
 // Reset scroll state when streaming starts
 watch(isStreaming, (streaming) => {
@@ -140,6 +147,7 @@ watch(state, async () => {
   <div class="response-panel">
     <div v-if="state.kind === 'idle'" class="response-empty">
       <div class="response-empty-hint">{{ t.sendRequest }}</div>
+      <Button size="small" type="primary" @click="emit('resend')">{{ t.send }}</Button>
     </div>
 
     <div v-else-if="state.kind === 'loading'" class="response-loading">
@@ -321,6 +329,10 @@ watch(state, async () => {
   align-items: center;
   justify-content: center;
   padding: 32px;
+}
+.response-empty {
+  flex-direction: column;
+  gap: 12px;
 }
 .response-empty-hint {
   font-size: 13px;

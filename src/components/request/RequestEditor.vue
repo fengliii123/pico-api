@@ -526,8 +526,8 @@ defineExpose({ send })
         <KeyValueTable
           :rows="paramsRows"
           row-kind="param"
-          key-placeholder="Parameter name"
-          value-placeholder="Value"
+          :key-placeholder="t.paramName"
+          :value-placeholder="t.value"
           :empty-hint="t.noParametersHint"
           @update="(rows) => paramsRows = rows"
         />
@@ -543,8 +543,8 @@ defineExpose({ send })
           :rows="headerRows"
           :virtual-rows="headerVirtualRows"
           row-kind="header"
-          key-placeholder="Header"
-          value-placeholder="Value"
+          :key-placeholder="t.headerName"
+          :value-placeholder="t.value"
           :empty-hint="t.noHeadersHint"
           @update="onHeaderRowsUpdate"
         />
@@ -568,7 +568,7 @@ defineExpose({ send })
       v-model:open="moreOpen"
       :title="t.more"
       placement="right"
-      :width="480"
+      width="min(480px, 92vw)"
       class="more-drawer"
     >
       <Segmented

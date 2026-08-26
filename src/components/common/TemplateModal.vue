@@ -420,7 +420,7 @@ function close() {
   <Modal
     :open="open"
     title="Request Templates"
-    width="800px"
+    width="min(800px, 92vw)"
     :footer="null"
     @cancel="close"
   >

@@ -5,9 +5,7 @@ dist
 .claude
 .idea
 .playwright-mcp
-tests
 test-results
-docs
 store
 .github
 .pnpm-store

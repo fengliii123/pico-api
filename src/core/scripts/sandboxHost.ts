@@ -62,6 +62,9 @@ export function serializeContextForSandbox(
 }
 
 let iframe: HTMLIFrameElement | null = null
+// The frame being created/booted (until sandbox:ready). Tracked separately
+// so onSandboxMessage can source-check messages that arrive during boot.
+let pendingFrame: HTMLIFrameElement | null = null
 let iframeReady: Promise<HTMLIFrameElement> | null = null
 let readyResolve: (() => void) | null = null
 let nextId = 0
@@ -71,6 +74,11 @@ const pending = new Map<string, {
 }>()
 
 function onSandboxMessage(event: MessageEvent) {
+  // Only accept messages from OUR sandbox iframe. The sandboxed frame has an
+  // opaque origin ('null'), so an origin check is useless here — comparing
+  // the message source is the only reliable gate.
+  const expected = iframe ?? pendingFrame
+  if (!expected || event.source !== expected.contentWindow) return
   const data = event.data
   if (!data?.type) return
   if (data.type === 'sandbox:ready') {
@@ -110,11 +118,14 @@ function ensureSandboxFrame(): Promise<HTMLIFrameElement> {
 
     const readyTimer = setTimeout(() => {
       readyResolve = null
+      pendingFrame = null
+      frame.remove()
       reject(new Error('sandbox iframe ready timeout'))
     }, SANDBOX_TIMEOUT_MS)
 
     readyResolve = () => {
       clearTimeout(readyTimer)
+      pendingFrame = null
       iframe = frame
       resolve(frame)
     }
@@ -122,8 +133,11 @@ function ensureSandboxFrame(): Promise<HTMLIFrameElement> {
     frame.onerror = () => {
       clearTimeout(readyTimer)
       readyResolve = null
+      pendingFrame = null
+      frame.remove()
       reject(new Error('sandbox iframe failed to load'))
     }
+    pendingFrame = frame
     document.documentElement.appendChild(frame)
   })
 
@@ -155,6 +169,11 @@ export async function runScriptViaSandbox(
       }
     })
 
+    // targetOrigin stays '*': the sandboxed frame's origin is opaque ('null')
+    // and never matches a concrete origin, so an explicit targetOrigin would
+    // silently drop the message (this is Chrome's own sandboxing-eval pattern).
+    // The frame is ours (created above, src pinned to sandbox.html) and the
+    // reply path is source-checked in onSandboxMessage.
     frame.contentWindow?.postMessage({ type: 'sandbox:run', id, input }, '*')
   })
 }

@@ -89,15 +89,18 @@ export const useResponseStore = defineStore('response', () => {
     cache.value = newCache
   }
 
+  // Rebuilding the chunks array on every append was O(chunks²) over a long
+  // stream. Instead: push into the same array and swap in a fresh state
+  // object + Map. The new state object is what makes the `state` computed
+  // propagate (a mutated-in-place array alone never would), while the push
+  // keeps each append O(1).
   function appendStreamChunk(text: string) {
     const key = activeId.value ?? NEW_REQUEST_KEY
     const current = cache.value.get(key)
     if (current?.kind === 'streaming') {
+      current.chunks.push({ text, timestamp: Date.now() })
       const newCache = new Map(cache.value)
-      newCache.set(key, {
-        ...current,
-        chunks: [...current.chunks, { text, timestamp: Date.now() }]
-      })
+      newCache.set(key, { ...current })
       cache.value = newCache
     }
   }
@@ -106,11 +109,11 @@ export const useResponseStore = defineStore('response', () => {
     const key = activeId.value ?? NEW_REQUEST_KEY
     const current = cache.value.get(key)
     const newCache = new Map(cache.value)
-    
+
     if (current?.kind === 'streaming' && result.isStreaming) {
       newCache.set(key, {
         kind: 'streaming',
-        chunks: current.chunks,
+        chunks: [],
         mime: current.mime,
         completed: true,
         result,

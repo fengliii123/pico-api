@@ -105,7 +105,7 @@ function updateBasic(username: string, password: string) {
         <label class="auth-field-label">{{ t.authPrefix }} <span class="auth-optional">{{ t.authPrefixOptional }}</span></label>
         <Input
           :value="apikey?.prefix ?? ''"
-          placeholder="e.g. Token for Bearer, leave empty for none"
+          :placeholder="t.authPrefixExample"
           @update:value="(v: string) => updateApikey(apikey?.key ?? '', apikey?.value ?? '', apikey?.addTo, v)"
         />
       </div>
@@ -124,7 +124,7 @@ function updateBasic(username: string, password: string) {
         <label class="auth-field-label">{{ t.authPrefix }} <span class="auth-optional">{{ t.authPrefixOptional }}</span></label>
         <Input
           :value="bearer?.prefix ?? ''"
-          placeholder="Bearer (default)"
+          :placeholder="t.authBearerDefault"
           @update:value="(v: string) => updateBearer(bearer?.token ?? '', v)"
         />
       </div>
@@ -136,7 +136,7 @@ function updateBasic(username: string, password: string) {
         <label class="auth-field-label">{{ t.authUsername }}</label>
         <Input
           :value="basic?.username ?? ''"
-          placeholder="username"
+          :placeholder="t.authUsername"
           @update:value="(v: string) => updateBasic(v, basic?.password ?? '')"
         />
       </div>
@@ -144,7 +144,7 @@ function updateBasic(username: string, password: string) {
         <label class="auth-field-label">{{ t.authPassword }}</label>
         <Input.Password
           :value="basic?.password ?? ''"
-          placeholder="password"
+          :placeholder="t.authPassword"
           @update:value="(v: string) => updateBasic(basic?.username ?? '', v)"
         />
       </div>

@@ -34,9 +34,13 @@ function onKeyDown(e: KeyboardEvent) {
   // Don't intercept when typing in input/textarea/select elements
   const target = e.target as HTMLElement
   if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable) {
-    // Allow Cmd+P for quick switch even in input (useful for fuzzy search)
+    // The palette and quick-switch are search UIs — opening them from an
+    // input is the standard behavior (VS Code, Postman); allow both.
     const combo = getCombo(e)
-    if (combo !== 'meta+p' && combo !== 'ctrl+p') return
+    const passes =
+      combo === 'meta+k' || combo === 'ctrl+k' ||
+      combo === 'meta+p' || combo === 'ctrl+p'
+    if (!passes) return
   }
 
   const combo = getCombo(e)

@@ -127,7 +127,7 @@ const logoSrc = computed(() => {
     <SettingsModal v-model:open="settingsOpen" />
     <CommandPalette
       :open="isCommandPaletteOpen"
-      @update:open="(v) => isCommandPaletteOpen = v"
+      @close="closeCommandPalette"
       @import="importOpen = true"
       @export="exportOpen = true"
     />
@@ -148,6 +148,14 @@ const logoSrc = computed(() => {
   display: flex;
   flex-direction: column;
   background: var(--bg-subtle);
+}
+/* Narrow windows (side-panel-like widths): shrink the sidebar so the
+ * request editor keeps usable space instead of being crushed to a sliver. */
+@media (max-width: 640px) {
+  .sidebar {
+    width: 180px;
+    flex-basis: 180px;
+  }
 }
 .sidebar-header {
   padding: var(--space-4) var(--space-5);

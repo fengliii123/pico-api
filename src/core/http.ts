@@ -4,6 +4,7 @@ import { mergeAbortSignals } from './abortSignals'
 import { bytesToBase64, base64ToBytes } from './binaryTransport'
 import { extractResourceTiming } from './timing'
 import { readCappedResponseBody } from './fetchResponseBody'
+import { maxResponseBytes, streamTruncationNotice } from './responseSize'
 import { processHeaders } from './headers'
 import { isMethodWithBody, serializeBody } from './body'
 import { applyVariables } from './variables'
@@ -346,7 +347,7 @@ async function executeViaBridge(req: NormalizedRequest, opts: ExecuteOptions): P
 async function executeStreamingViaBridge(
   req: NormalizedRequest,
   opts: StreamingExecuteOptions
-): Promise<ResponseResult & { isStreaming: boolean; chunks: string[] }> {
+): Promise<ResponseResult & { isStreaming: boolean }> {
   const id = Math.random().toString(36).slice(2) + Date.now().toString(36)
 
   // Transport body handling (same as executeViaBridge).
@@ -374,12 +375,11 @@ async function executeStreamingViaBridge(
   let statusText = 'OK'
   let mime = ''
   let time = 0
-  let resolve: (v: ResponseResult & { isStreaming: boolean; chunks: string[] }) => void = () => {}
+  let resolve: (v: ResponseResult & { isStreaming: boolean }) => void = () => {}
   let reject: (e: ResponseError) => void = () => {}
   let port: any = null
-  const chunks: string[] = []
 
-  const promise = new Promise<ResponseResult & { isStreaming: boolean; chunks: string[] }>((res, rej) => {
+  const promise = new Promise<ResponseResult & { isStreaming: boolean }>((res, rej) => {
     resolve = res
     reject = rej
   })
@@ -417,10 +417,12 @@ async function executeStreamingViaBridge(
       chunkCount++
       fullText += msg.chunk
       onChunk(msg.chunk)
-      chunks.push(msg.chunk)
     } else if (msg.type === 'done') {
       mime = msg.mime
       time = msg.time
+      if (msg.truncated) {
+        fullText += streamTruncationNotice(req.settings?.maxResponseSize)
+      }
       console.log('[executeStreaming] Bridge: done, chunkCount:', chunkCount, 'isStreaming:', chunkCount > 1)
       resolve({
         status,
@@ -430,8 +432,7 @@ async function executeStreamingViaBridge(
         time,
         mime,
         timing: undefined,
-        isStreaming: chunkCount > 1,  // True streaming = multiple chunks
-        chunks
+        isStreaming: chunkCount > 1  // True streaming = multiple chunks
       })
       port?.disconnect()
     } else if (msg.type === 'error') {
@@ -568,7 +569,7 @@ export interface StreamingExecuteOptions extends ExecuteOptions {
 export async function executeStreaming(
   req: NormalizedRequest,
   opts: StreamingExecuteOptions
-): Promise<ResponseResult & { isStreaming: boolean; chunks: string[] }> {
+): Promise<ResponseResult & { isStreaming: boolean }> {
   if (hasExtensionRuntime()) {
     return executeStreamingViaBridge(req, opts)
   }
@@ -579,7 +580,7 @@ export async function executeStreaming(
 async function executeStreamingDirect(
   req: NormalizedRequest,
   opts: StreamingExecuteOptions
-): Promise<ResponseResult & { isStreaming: boolean; chunks: string[] }> {
+): Promise<ResponseResult & { isStreaming: boolean }> {
   const t0 = performance.now()
   const { onChunk, ...rest } = opts
 
@@ -614,7 +615,10 @@ async function executeStreamingDirect(
   const decoder = new TextDecoder()
   let fullText = ''
   let chunkCount = 0
-  const chunks: string[] = []
+  // Same cap as the background streaming path (see runStreamingFetch).
+  const maxBytes = maxResponseBytes(req.settings?.maxResponseSize)
+  let received = 0
+  let truncated = false
   console.log('[executeStreaming] Direct: Starting stream for', req.url)
   let lastLogTime = Date.now()
 
@@ -630,11 +634,19 @@ async function executeStreamingDirect(
       }
       const chunk = decoder.decode(value, { stream: true })
       onChunk(chunk)
-      chunks.push(chunk)
       fullText += chunk
+      received += value.byteLength
+      if (maxBytes > 0 && received >= maxBytes) {
+        truncated = true
+        await reader.cancel()
+        break
+      }
     }
   } finally {
     reader.releaseLock()
+  }
+  if (truncated) {
+    fullText += streamTruncationNotice(req.settings?.maxResponseSize)
   }
 
   const t1 = performance.now()
@@ -653,7 +665,6 @@ async function executeStreamingDirect(
     time: Math.round(t1 - t0),
     mime,
     timing,
-    isStreaming: chunkCount > 1,  // True streaming = multiple chunks
-    chunks
+    isStreaming: chunkCount > 1  // True streaming = multiple chunks
   }
 }

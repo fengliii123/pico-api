@@ -4,7 +4,7 @@
   "short_name": "Pico",
   "version": "1.0.4",
   "version_name": "1.0.4",
-  "description": "Lightweight HTTP client & REST API tester for Chrome. Send requests and debug APIs without leaving the tab.",
+  "description": "Lightweight HTTP client & REST API testing tool for Chrome. Send requests, debug APIs, and stream responses without leaving the tab.",
   "minimum_chrome_version": "116",
   "icons": {
     "16": "icons/16.png",

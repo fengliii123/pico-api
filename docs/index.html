@@ -3,8 +3,75 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Pico API — Privacy Policy</title>
-  <meta name="description" content="Privacy policy for the Pico API Chrome extension.">
+  <title>Pico API — Lightweight HTTP &amp; REST Client for Chrome</title>
+  <meta name="description" content="Pico API is a lightweight HTTP client and REST API testing tool for Chrome. Send requests, debug APIs, watch streaming responses live, and manage environments — all locally in your browser.">
+  <link rel="canonical" href="https://fengliii123.github.io/pico-api/">
+  <link rel="icon" type="image/png" href="assets/icon-128.png">
+  <meta name="robots" content="index,follow">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Pico API">
+  <meta property="og:title" content="Pico API — Lightweight HTTP &amp; REST Client for Chrome">
+  <meta property="og:description" content="Send requests, debug APIs, watch streaming responses live. A local-first REST client that lives in your browser.">
+  <meta property="og:url" content="https://fengliii123.github.io/pico-api/">
+  <meta property="og:image" content="https://fengliii123.github.io/pico-api/assets/hero-1280x800.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Pico API — Lightweight HTTP &amp; REST Client for Chrome">
+  <meta name="twitter:description" content="Send requests, debug APIs, watch streaming responses live. A local-first REST client that lives in your browser.">
+  <meta name="twitter:image" content="https://fengliii123.github.io/pico-api/assets/hero-1280x800.png">
+
+  <!-- Structured data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Pico API",
+    "alternateName": "Pico API - HTTP & REST Client",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Chrome",
+    "url": "https://fengliii123.github.io/pico-api/",
+    "description": "Lightweight HTTP client and REST API testing tool for Chrome. Send requests, debug APIs, stream responses, and manage environments locally.",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "inLanguage": ["en", "zh-CN"]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Is Pico API free?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Yes. Pico API is free to install and use, with no account required." }
+      },
+      {
+        "@type": "Question",
+        "name": "Does Pico API collect my data?",
+        "acceptedAnswer": { "@type": "Answer", "text": "No. Everything — saved requests, environments, history, settings — is stored locally in your browser via IndexedDB. There are no analytics, ads, or third-party scripts." }
+      },
+      {
+        "@type": "Question",
+        "name": "How is Pico API different from Postman or Insomnia?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Pico API runs entirely inside Chrome with zero setup or account. It is intentionally small: a request builder, response viewer, environments, and scripting — without the platform weight." }
+      },
+      {
+        "@type": "Question",
+        "name": "Can I import my existing API collections?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Yes. Pico API imports cURL commands, OpenAPI/Swagger specifications, and ApiFox projects." }
+      },
+      {
+        "@type": "Question",
+        "name": "Does it support streaming responses like SSE?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Yes. Server-sent events and other streaming responses render chunk by chunk as they arrive." }
+      }
+    ]
+  }
+  </script>
+
   <style>
     :root {
       --bg: #ffffff;
@@ -13,6 +80,7 @@
       --text-muted: #475569;
       --border: #e2e8f0;
       --brand: #00B894;
+      --brand-dark: #00997e;
       --brand-soft: #d1fae5;
       --mono: 'SF Mono', 'Menlo', 'Consolas', monospace;
       --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
@@ -25,6 +93,7 @@
         --text-muted: #94a3b8;
         --border: #334155;
         --brand: #2EE6C2;
+        --brand-dark: #2cc9aa;
         --brand-soft: #134e4a;
       }
     }
@@ -35,17 +104,16 @@
       color: var(--text);
       line-height: 1.65;
       margin: 0;
-      padding: 0;
     }
-    .container {
-      max-width: 760px;
-      margin: 0 auto;
-      padding: 56px 24px 96px;
-    }
-    header {
+    a { color: var(--brand-dark); }
+    .container { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 0;
       border-bottom: 1px solid var(--border);
-      padding-bottom: 24px;
-      margin-bottom: 32px;
     }
     .brand {
       display: flex;
@@ -53,10 +121,11 @@
       gap: 10px;
       font-weight: 700;
       letter-spacing: -0.01em;
+      color: var(--text);
+      text-decoration: none;
     }
     .brand-mark {
-      width: 28px;
-      height: 28px;
+      width: 28px; height: 28px;
       border-radius: 7px;
       background: var(--brand);
       display: inline-flex;
@@ -66,34 +135,125 @@
       font-weight: 900;
       font-size: 16px;
     }
-    .updated {
-      color: var(--text-muted);
-      font-size: 13px;
-      margin-top: 4px;
-    }
-    h1 {
-      font-size: 32px;
+    .nav-links { display: flex; gap: 20px; font-size: 14px; }
+    .nav-links a { color: var(--text-muted); text-decoration: none; }
+    .nav-links a:hover { color: var(--brand-dark); }
+
+    .hero { text-align: center; padding: 72px 0 48px; }
+    .hero h1 {
+      font-size: 40px;
       letter-spacing: -0.02em;
-      margin: 32px 0 8px;
+      margin: 0 0 16px;
     }
-    h2 {
-      font-size: 22px;
-      letter-spacing: -0.01em;
-      margin: 40px 0 12px;
-      padding-top: 16px;
-      border-top: 1px solid var(--border);
-    }
-    h3 {
-      font-size: 16px;
-      margin: 24px 0 8px;
+    .hero .tagline {
+      font-size: 19px;
       color: var(--text-muted);
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
+      max-width: 640px;
+      margin: 0 auto 32px;
     }
-    p { margin: 12px 0; }
-    a { color: var(--brand); }
-    hr { display: none; }
+    .cta-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 22px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 15px;
+      text-decoration: none;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .btn:hover { border-color: var(--brand); }
+    .btn-primary {
+      background: var(--brand);
+      border-color: var(--brand);
+      color: #fff;
+    }
+    .btn-primary:hover { background: var(--brand-dark); border-color: var(--brand-dark); }
+
+    .hero-shot {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-top: 40px;
+      box-shadow: 0 12px 40px rgba(15, 23, 42, 0.12);
+    }
+
+    h2 {
+      font-size: 26px;
+      letter-spacing: -0.01em;
+      margin: 64px 0 8px;
+      text-align: center;
+    }
+    .section-sub {
+      text-align: center;
+      color: var(--text-muted);
+      margin: 0 0 32px;
+    }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+    .feature {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 22px;
+    }
+    .feature h3 { font-size: 16px; margin: 0 0 6px; }
+    .feature p { font-size: 14px; color: var(--text-muted); margin: 0; }
+    .feature .glyph { font-size: 22px; margin-bottom: 8px; }
+
+    .install-steps {
+      counter-reset: step;
+      list-style: none;
+      padding: 0;
+      max-width: 620px;
+      margin: 0 auto;
+    }
+    .install-steps li {
+      counter-increment: step;
+      display: flex;
+      gap: 14px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .install-steps li::before {
+      content: counter(step);
+      flex: none;
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: var(--brand-soft);
+      color: var(--brand-dark);
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .faq { max-width: 720px; margin: 0 auto; }
+    .faq h3 {
+      font-size: 16px;
+      margin: 24px 0 6px;
+    }
+    .faq p { color: var(--text-muted); margin: 0 0 8px; }
+
+    footer {
+      margin-top: 72px;
+      padding: 24px 0 48px;
+      border-top: 1px solid var(--border);
+      font-size: 13px;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    footer a { color: var(--text-muted); }
     code {
       font-family: var(--mono);
       background: var(--bg-subtle);
@@ -101,109 +261,118 @@
       border-radius: 4px;
       font-size: 0.92em;
     }
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      margin: 16px 0;
-      font-size: 14px;
-    }
-    th, td {
-      text-align: left;
-      padding: 10px 12px;
-      border-bottom: 1px solid var(--border);
-      vertical-align: top;
-    }
-    th {
-      font-weight: 600;
-      color: var(--text-muted);
-      background: var(--bg-subtle);
-    }
-    ul, ol { padding-left: 24px; }
-    li { margin: 6px 0; }
-    .callout {
-      background: var(--brand-soft);
-      border-left: 3px solid var(--brand);
-      padding: 14px 18px;
-      border-radius: 4px;
-      margin: 24px 0;
-    }
-    .callout p { margin: 0; }
-    strong { font-weight: 600; }
-    footer {
-      margin-top: 64px;
-      padding-top: 24px;
-      border-top: 1px solid var(--border);
-      font-size: 13px;
-      color: var(--text-muted);
-    }
   </style>
 </head>
 <body>
   <div class="container">
-    <header>
-      <div class="brand">
+    <nav>
+      <a class="brand" href="./">
         <span class="brand-mark">P</span>
         <span>Pico API</span>
+      </a>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#install">Install</a>
+        <a href="#faq">FAQ</a>
+        <a href="https://github.com/fengliii123/pico-api">GitHub</a>
       </div>
-      <div class="updated">Privacy Policy · Last updated 2026-08-20</div>
+    </nav>
+
+    <header class="hero">
+      <h1>The smallest meaningful unit of a REST client</h1>
+      <p class="tagline">
+        Pico API is a lightweight HTTP client and REST API testing tool for
+        Chrome. Send requests, debug APIs, and watch streaming responses live —
+        without leaving your browser or creating an account.
+      </p>
+      <div class="cta-row">
+        <!-- Replace href with the Chrome Web Store listing URL once published. -->
+        <a class="btn btn-primary" href="https://github.com/fengliii123/pico-api">Install for Chrome</a>
+        <a class="btn" href="https://github.com/fengliii123/pico-api">Star on GitHub</a>
+      </div>
+      <img class="hero-shot" src="assets/hero-1280x800.png" width="1280" height="800"
+           alt="Pico API extension UI showing a streaming response with live chunks, request editor, and collection tree" loading="lazy">
     </header>
 
-    <h1>Privacy Policy</h1>
+    <section id="features">
+      <h2>Everything you need to debug APIs</h2>
+      <p class="section-sub">A focused feature set — nothing you have to sign up for.</p>
+      <div class="features">
+        <div class="feature">
+          <div class="glyph">⚡</div>
+          <h3>Live streaming responses</h3>
+          <p>Server-sent events and chunked responses render as they arrive — no waiting for the full body.</p>
+        </div>
+        <div class="feature">
+          <div class="glyph">🌍</div>
+          <h3>Environments &amp; variables</h3>
+          <p>Switch between dev / staging / prod with <code>{{variables}}</code> resolved everywhere — URL, headers, body, and scripts.</p>
+        </div>
+        <div class="feature">
+          <div class="glyph">🧩</div>
+          <h3>Pre/post-request scripts</h3>
+          <p>Postman-style <code>pm</code> API in a hardened sandbox: set variables, assert responses, run tests.</p>
+        </div>
+        <div class="feature">
+          <div class="glyph">📥</div>
+          <h3>Import &amp; export</h3>
+          <p>Import cURL commands, OpenAPI/Swagger specs, and ApiFox projects. Export collections or copy any request as cURL.</p>
+        </div>
+        <div class="feature">
+          <div class="glyph">🍪</div>
+          <h3>Browser cookies &amp; CORS bypass</h3>
+          <p>Requests go through the extension's service worker, so CORS won't block you — optionally attach your browser session cookies.</p>
+        </div>
+        <div class="feature">
+          <div class="glyph">🗂️</div>
+          <h3>Collections, history, undo</h3>
+          <p>Organize requests in a folder tree, revisit every sent request, and undo/redo edits with full keyboard shortcuts.</p>
+        </div>
+        <div class="feature">
+          <div class="glyph">🔒</div>
+          <h3>Local-first &amp; private</h3>
+          <p>All data stays in your browser's IndexedDB. No accounts, no analytics, no sync — your APIs are your business.</p>
+        </div>
+        <div class="feature">
+          <div class="glyph">⌨️</div>
+          <h3>Command palette &amp; shortcuts</h3>
+          <p>A ⌘K-style palette for switching requests and environments, plus send / save / duplicate shortcuts.</p>
+        </div>
+      </div>
+    </section>
 
-    <p>Pico API ("the extension", "we", "us") is a developer tool that runs entirely inside your browser. This policy explains what data the extension accesses, how it is stored, and the choices you control.</p>
+    <section id="install">
+      <h2>Get started</h2>
+      <p class="section-sub">Two ways to install — pick whichever you prefer.</p>
+      <ol class="install-steps">
+        <li><div><strong>From the Chrome Web Store</strong> (recommended) — search for “Pico API” or use the Install button above.</div></li>
+        <li><div><strong>From source</strong> — clone the <a href="https://github.com/fengliii123/pico-api">GitHub repo</a>, run <code>npm run build</code>, then load the <code>dist/</code> folder via <code>chrome://extensions</code> → Developer mode → Load unpacked.</div></li>
+        <li><div>Type a URL, press <strong>Send</strong> — your requests and responses stay on this machine.</div></li>
+      </ol>
+    </section>
 
-    <div class="callout">
-      <p><strong>TL;DR.</strong> The extension <strong>does not collect, transmit, or sell any personal data</strong>. Every piece of data it reads — saved requests, folders, environments, history, settings — is stored <strong>locally</strong> in your browser profile via IndexedDB and <code>localStorage</code>. Nothing leaves your machine except the HTTP requests you explicitly send to the URLs you typed in.</p>
-    </div>
-
-    <h2>1. Data the extension stores locally</h2>
-    <p>All of the following live in your browser's own storage (IndexedDB on the extension's origin, plus <code>localStorage</code> for settings). They are not synced to any server and are not accessible to websites you visit.</p>
-    <table>
-      <thead>
-        <tr><th>Data</th><th>Where</th><th>Purpose</th></tr>
-      </thead>
-      <tbody>
-        <tr><td>Saved folders and requests</td><td>IndexedDB</td><td>Lets you build a reusable API collection</td></tr>
-        <tr><td>Request drafts</td><td>IndexedDB</td><td>The request you're currently editing</td></tr>
-        <tr><td>Response history (capped)</td><td>IndexedDB</td><td>"Resend" / time-travel over recent responses</td></tr>
-        <tr><td>Environments and variables</td><td>IndexedDB</td><td>Variable substitution (<code>{{baseUrl}}</code>)</td></tr>
-        <tr><td>App settings (theme, locale)</td><td><code>localStorage</code></td><td>Remembers your UI preferences</td></tr>
-      </tbody>
-    </table>
-    <p>To wipe all local data, remove the extension from <code>chrome://extensions</code> — that deletes everything stored on the extension's origin. You can also export your collection to a JSON backup file (Settings → "Data backup") and restore it later; restoring replaces all current data.</p>
-
-    <h2>2. Data the extension reads to send your requests</h2>
-
-    <h3>2.1 Cookies (controlled by the "Send browser cookies" setting)</h3>
-    <p>To let you call APIs that depend on your browser session, the extension can attach the cookies your browser has already stored for the target URL. When the "Send browser cookies" setting is enabled, the extension uses <code>chrome.cookies.getAll()</code> to read those cookies and injects them as a <code>Cookie</code> header on the outgoing request. This setting lives in Settings and is <strong>enabled by default</strong>; you can turn it off at any time. If you set your own <code>Cookie</code> header on a request, yours wins and the browser jar is not read. The extension never modifies, sets, or deletes cookies.</p>
-
-    <h3>2.2 URLs you type</h3>
-    <p>When you send a request, the extension makes an HTTP call from the service worker directly to the URL you entered. The request body, headers, and any response received are processed locally to render the response panel. They are not logged, tracked, or transmitted anywhere else.</p>
-
-    <h2>3. Permissions and why each is needed</h2>
-    <table>
-      <thead><tr><th>Permission</th><th>Why it's needed</th></tr></thead>
-      <tbody>
-        <tr><td><code>cookies</code></td><td>Attach the browser's stored cookies to your requests ("Send browser cookies" setting)</td></tr>
-        <tr><td><code>host_permissions: &lt;all_urls&gt;</code></td><td>You can test any API endpoint; the extension makes no background network calls of its own</td></tr>
-      </tbody>
-    </table>
-    <p>The extension makes <strong>no background network requests</strong> of its own. Every outbound HTTP call is one you explicitly triggered by clicking Send.</p>
-
-    <h2>4. Third parties</h2>
-    <p>The extension does not load any third-party scripts, does not use analytics, does not embed advertising, and does not call any external API. There are no external service dependencies.</p>
-
-    <h2>5. Children's privacy</h2>
-    <p>The extension is a developer tool and is not directed at children under 13. We do not knowingly collect any data from anyone, regardless of age.</p>
-
-    <h2>6. Changes to this policy</h2>
-    <p>Material changes will be reflected by updating the "Last updated" date at the top of this document and bumping the extension version number.</p>
-
-    <h2>7. Contact</h2>
-    <p>For privacy questions or data-removal requests, open an issue on the extension's GitHub repository (linked from the Chrome Web Store listing) or from the extension's Settings → Feedback link.</p>
+    <section id="faq">
+      <h2>FAQ</h2>
+      <div class="faq">
+        <h3>Is Pico API free?</h3>
+        <p>Yes. Pico API is free to install and use, with no account required.</p>
+        <h3>Does Pico API collect my data?</h3>
+        <p>No. Everything — saved requests, environments, history, settings — is stored locally in your browser via IndexedDB. There are no analytics, ads, or third-party scripts. See the <a href="privacy.html">privacy policy</a>.</p>
+        <h3>How is Pico API different from Postman or Insomnia?</h3>
+        <p>Pico API runs entirely inside Chrome with zero setup or account. It is intentionally small: a request builder, response viewer, environments, and scripting — without the platform weight.</p>
+        <h3>Can I import my existing API collections?</h3>
+        <p>Yes. Pico API imports cURL commands, OpenAPI/Swagger specifications, and ApiFox projects.</p>
+        <h3>Does it support streaming responses like SSE?</h3>
+        <p>Yes. Server-sent events and other streaming responses render chunk by chunk as they arrive.</p>
+      </div>
+    </section>
 
     <footer>
-      Pico API is a Chrome extension. This privacy policy is linked from the extension's Chrome Web Store listing.
+      <span>Pico API — a lightweight HTTP &amp; REST client for Chrome.</span>
+      <span>
+        <a href="privacy.html">Privacy</a> ·
+        <a href="https://github.com/fengliii123/pico-api">GitHub</a>
+      </span>
     </footer>
   </div>
 </body>

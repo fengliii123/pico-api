@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { Modal, Button, Input, Tag, Empty } from 'ant-design-vue'
+import { Modal, Button, Input, Tag, Empty, Checkbox } from 'ant-design-vue'
 import { DeleteOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons-vue'
 import { history as historyDb } from '@/db'
 import { useRequestStore } from '@/stores/request'
@@ -142,6 +142,34 @@ async function deleteEntry(id: string) {
   entries.value = entries.value.filter(e => e.id !== id)
 }
 
+const selected = ref(new Set<string>())
+const selectedCount = computed(() => selected.value.size)
+
+function toggleSelected(id: string) {
+  const next = new Set(selected.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  selected.value = next
+}
+
+function deleteSelected() {
+  Modal.confirm({
+    title: fmt(t.value.deleteSelected, { n: selected.value.size }),
+    content: fmt(t.value.deleteSelectedConfirm, { n: selected.value.size }),
+    okText: t.value.delete,
+    okType: 'danger',
+    cancelText: t.value.cancel,
+    onOk: async () => {
+      for (const id of selected.value) {
+        await historyDb.delete(id)
+      }
+      const removed = selected.value
+      entries.value = entries.value.filter(e => !removed.has(e.id))
+      selected.value = new Set()
+    }
+  })
+}
+
 function clearAll() {
   Modal.confirm({
     title: t.value.clearHistoryConfirmTitle,
@@ -165,7 +193,7 @@ function close() {
   <Modal
     :open="open"
     :title="t.historyTitle"
-    width="800px"
+    width="min(800px, 92vw)"
     :footer="null"
     @cancel="close"
   >
@@ -197,6 +225,15 @@ function close() {
           <Button size="small" @click="loadHistory">
             <template #icon><ReloadOutlined /></template>
             {{ t.refresh }}
+          </Button>
+          <Button
+            v-if="selectedCount > 0"
+            size="small"
+            danger
+            @click="deleteSelected"
+          >
+            <template #icon><DeleteOutlined /></template>
+            {{ fmt(t.deleteSelected, { n: selectedCount }) }}
           </Button>
           <Button size="small" danger @click="clearAll" :disabled="entries.length === 0">
             <template #icon><DeleteOutlined /></template>
@@ -232,6 +269,12 @@ function close() {
           >
             <div class="entry-main" @click="() => runEntry(entry)">
               <div class="entry-left">
+                <span class="entry-select" @click.stop>
+                  <Checkbox
+                    :checked="selected.has(entry.id)"
+                    @change="() => toggleSelected(entry.id)"
+                  />
+                </span>
                 <span
                   class="method-tag"
                   :style="{ color: getMethodColor(entry.method), borderColor: getMethodColor(entry.method) }"
@@ -356,6 +399,12 @@ function close() {
   gap: 8px;
   min-width: 0;
   flex: 1;
+}
+
+.entry-select {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .method-tag {

@@ -156,7 +156,7 @@ function close() {
   <Modal
     :open="open"
     :title="t.settings"
-    width="600px"
+    width="min(600px, 92vw)"
     :footer="null"
     @cancel="close"
   >

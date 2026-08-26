@@ -207,8 +207,16 @@ const flatItems = computed<CommandItem[]>(() => {
   return filteredResults.value.flatMap(g => g.items)
 })
 
+// Remember which element had focus before the palette opened, so closing
+// it (Esc / Enter / overlay click) returns the keyboard user to where
+// they were instead of dropping focus to <body>.
+let previouslyFocused: HTMLElement | null = null
+
 watch(() => props.open, (open) => {
   if (open) {
+    previouslyFocused = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null
     searchQuery.value = ''
     selectedIndex.value = 0
     void loadHistoryCommands()
@@ -216,6 +224,12 @@ watch(() => props.open, (open) => {
       const el = document.querySelector<HTMLInputElement>('.palette-input')
       el?.focus()
     })
+  } else {
+    const restore = previouslyFocused
+    previouslyFocused = null
+    if (restore && restore.isConnected) {
+      nextTick(() => restore.focus())
+    }
   }
 })
 

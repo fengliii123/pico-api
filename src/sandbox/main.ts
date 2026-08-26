@@ -52,6 +52,10 @@ function responseFromWire(
 window.parent.postMessage({ type: 'sandbox:ready' }, '*')
 
 window.addEventListener('message', async (event: MessageEvent<SandboxRunMessage>) => {
+  // Only the embedding extension page may ask us to run a script — reject
+  // messages from any other source. (Our own origin is opaque, so origin
+  // checks can't be used; comparing event.source to window.parent is exact.)
+  if (event.source !== window.parent) return
   const data = event.data
   if (!data || data.type !== 'sandbox:run') return
 

@@ -5,6 +5,7 @@ import type { ResponseError, ResponseResult } from '../core/types'
 import type { NormalizedRequest, BridgeNormalizedRequest } from '../core/http'
 import { extractResourceTiming } from '../core/timing'
 import { readCappedResponseBodyForBridge } from '../core/fetchResponseBody'
+import { maxResponseBytes } from '../core/responseSize'
 import { mergeAbortSignals } from '../core/abortSignals'
 import { parseSetCookies } from '../core/cookies'
 import type { ParsedCookie } from '../core/cookies'
@@ -243,7 +244,12 @@ async function runStreamingFetch(
     }
 
     const decoder = new TextDecoder()
-    let fullText = ''
+    // Honor the same max-response-size cap as the non-streaming path —
+    // without this, a long SSE stream would grow without bound in the
+    // service worker and in the UI store.
+    const maxBytes = maxResponseBytes(payload.req.settings?.maxResponseSize)
+    let received = 0
+    let truncated = false
 
     // Send headers immediately via the port.
     port?.postMessage({ type: 'headers', headers: headersOut, status: res.status, statusText: res.statusText })
@@ -254,8 +260,13 @@ async function runStreamingFetch(
         if (done) break
 
         const chunk = decoder.decode(value, { stream: true })
-        fullText += chunk
+        received += value.byteLength
         port?.postMessage({ type: 'chunk', chunk })
+        if (maxBytes > 0 && received >= maxBytes) {
+          truncated = true
+          await reader.cancel()
+          break
+        }
       }
     } finally {
       reader.releaseLock()
@@ -265,7 +276,8 @@ async function runStreamingFetch(
     port?.postMessage({
       type: 'done',
       mime,
-      time: Math.round(performance.now() - t0)
+      time: Math.round(performance.now() - t0),
+      truncated
     })
     port?.disconnect()
 
