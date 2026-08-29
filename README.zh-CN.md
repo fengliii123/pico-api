@@ -99,8 +99,5 @@ src/
 
 ## 许可证
 
-源代码公开仅供阅读与审阅。代码为**专有（Proprietary）**，使用须遵守
-[`LICENSE`](./LICENSE) 条款——复制、再分发、二次发布（无论开源或商业）
-须经维护者书面授权。
-
-最终用户可通过 Chrome Web Store 安装并使用已编译的扩展。
+基于 [MIT License](./LICENSE) 开源，可自由使用、修改和再分发。
+已编译的扩展也可通过 Chrome Web Store 安装。

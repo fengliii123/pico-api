@@ -102,9 +102,6 @@ src/
 
 ## License
 
-The source code is published for reading and review. It is **proprietary**
-and licensed under the terms of [`LICENSE`](./LICENSE) — copying,
-redistributing, or re-publishing it (open-source or commercial) requires
-written permission from the maintainer.
-
-End users may install and use the compiled extension via the Chrome Web Store.
+Released under the [MIT License](./LICENSE). You are free to use, modify,
+and redistribute the code. The compiled extension is also available on the
+Chrome Web Store.
