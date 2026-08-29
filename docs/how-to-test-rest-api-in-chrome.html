@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>How to Test a REST API in Chrome (2026 Guide) — No Desktop App Needed</title>
+  <meta name="description" content="Step-by-step guide: send HTTP requests and test REST APIs directly in Chrome — install a REST client extension, send your first request, use environments and variables, run test scripts.">
+  <link rel="canonical" href="https://fengliii123.github.io/pico-api/how-to-test-rest-api-in-chrome.html">
+  <link rel="icon" type="image/png" href="assets/icon-128.png">
+  <meta name="robots" content="index,follow">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Pico API">
+  <meta property="og:title" content="How to Test a REST API in Chrome (2026 Guide)">
+  <meta property="og:description" content="Send HTTP requests and test REST APIs directly in Chrome — no desktop app, no account.">
+  <meta property="og:url" content="https://fengliii123.github.io/pico-api/how-to-test-rest-api-in-chrome.html">
+  <meta property="og:image" content="https://fengliii123.github.io/pico-api/assets/hero-1280x800.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="How to Test a REST API in Chrome (2026 Guide)">
+  <meta name="twitter:description" content="Send HTTP requests and test REST APIs directly in Chrome — no desktop app, no account.">
+  <meta name="twitter:image" content="https://fengliii123.github.io/pico-api/assets/hero-1280x800.png">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Pico API", "item": "https://fengliii123.github.io/pico-api/" },
+      { "@type": "ListItem", "position": 2, "name": "How to Test a REST API in Chrome", "item": "https://fengliii123.github.io/pico-api/how-to-test-rest-api-in-chrome.html" }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "name": "How to test a REST API in Chrome",
+    "description": "Send HTTP requests and test REST APIs directly in the Chrome browser using a lightweight REST client extension.",
+    "totalTime": "PT5M",
+    "step": [
+      { "@type": "HowToStep", "position": 1, "name": "Install a REST client for Chrome", "text": "Install Pico API from the Chrome Web Store (search \"Pico API\"). It opens in a regular browser tab — no account or desktop app needed." },
+      { "@type": "HowToStep", "position": 2, "name": "Enter the endpoint URL and method", "text": "Pick the HTTP method (GET, POST, PUT, PATCH, DELETE) and type the API endpoint URL. Add query parameters in the Params table — they sync into the URL automatically." },
+      { "@type": "HowToStep", "position": 3, "name": "Add headers, auth, and body", "text": "Add headers like Content-Type or Authorization, or use the built-in Bearer / Basic / API key auth. For POST requests, choose a body format: raw JSON, XML, text, urlencoded, or multipart form-data." },
+      { "@type": "HowToStep", "position": 4, "name": "Send and inspect the response", "text": "Click Send. The response panel shows the status code, timing, size, headers, cookies, and a JSON tree view. Streaming endpoints (SSE) render chunk by chunk in real time." },
+      { "@type": "HowToStep", "position": 5, "name": "Use environments for dev/staging/prod", "text": "Define {{variables}} like {{baseUrl}} and switch environments from the sidebar to point the same request at different servers." },
+      { "@type": "HowToStep", "position": 6, "name": "Automate checks with test scripts", "text": "Add a post-response script with Postman-style pm.test assertions — pass/fail results appear in a Tests tab after every send." }
+    ]
+  }
+  </script>
+  <style>
+    :root {
+      --bg: #ffffff; --bg-subtle: #f6f8fa; --text: #0f172a; --text-muted: #475569;
+      --border: #e2e8f0; --brand: #00B894; --brand-dark: #00997e; --brand-soft: #d1fae5;
+      --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      --mono: 'SF Mono', 'Menlo', 'Consolas', monospace;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #0f172a; --bg-subtle: #1e293b; --text: #e2e8f0; --text-muted: #94a3b8; --border: #334155; --brand: #2EE6C2; --brand-dark: #2cc9aa; --brand-soft: #134e4a; }
+    }
+    * { box-sizing: border-box; }
+    body { font-family: var(--sans); background: var(--bg); color: var(--text); line-height: 1.7; margin: 0; }
+    a { color: var(--brand-dark); }
+    .container { max-width: 780px; margin: 0 auto; padding: 0 24px; }
+    nav { display: flex; align-items: center; justify-content: space-between; padding: 18px 0; border-bottom: 1px solid var(--border); }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--text); text-decoration: none; }
+    .brand-mark { width: 28px; height: 28px; border-radius: 7px; background: var(--brand); display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 900; font-size: 16px; }
+    .nav-links { display: flex; gap: 18px; font-size: 14px; }
+    .nav-links a { color: var(--text-muted); text-decoration: none; }
+    .nav-links a:hover { color: var(--brand-dark); }
+    .crumb { font-size: 13px; color: var(--text-muted); padding: 16px 0 0; }
+    .hero { padding: 48px 0 8px; }
+    .hero h1 { font-size: 32px; letter-spacing: -0.02em; margin: 0 0 12px; }
+    .hero .tagline { font-size: 17px; color: var(--text-muted); }
+    .step { display: flex; gap: 16px; margin: 36px 0; }
+    .step-num { flex: none; width: 34px; height: 34px; border-radius: 50%; background: var(--brand-soft); color: var(--brand-dark); font-weight: 700; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+    .step h2 { font-size: 19px; margin: 3px 0 8px; }
+    .step p { margin: 8px 0; color: var(--text); }
+    code { font-family: var(--mono); background: var(--bg-subtle); padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; overflow-x: auto; font-size: 13px; }
+    pre code { background: none; padding: 0; }
+    .cta-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin: 48px 0 8px; }
+    .btn { display: inline-flex; align-items: center; padding: 11px 22px; border-radius: 8px; font-weight: 600; font-size: 15px; text-decoration: none; border: 1px solid var(--border); color: var(--text); }
+    .btn:hover { border-color: var(--brand); }
+    .btn-primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+    .btn-primary:hover { background: var(--brand-dark); }
+    footer { margin-top: 64px; padding: 24px 0 48px; border-top: 1px solid var(--border); font-size: 13px; color: var(--text-muted); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+    footer a { color: var(--text-muted); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav>
+      <a class="brand" href="./"><span class="brand-mark">P</span><span>Pico API</span></a>
+      <div class="nav-links">
+        <a href="./#features">Features</a>
+        <a href="curl-converter.html">cURL Converter</a>
+        <a href="postman-alternative.html">Postman Alternative</a>
+        <a href="https://github.com/fengliii123/pico-api">GitHub</a>
+      </div>
+    </nav>
+
+    <p class="crumb"><a href="./">Pico API</a> › Guide</p>
+
+    <header class="hero">
+      <h1>How to test a REST API in Chrome</h1>
+      <p class="tagline">
+        You don't need a desktop app or an account to test an API. This guide
+        walks through sending your first HTTP request from a browser tab with
+        Pico API — free, local-first, about five minutes end to end.
+      </p>
+    </header>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div>
+        <h2>Install a REST client for Chrome</h2>
+        <p>Search <strong>“Pico API”</strong> in the <a href="https://chromewebstore.google.com">Chrome Web Store</a> and install it. Click the toolbar icon and the client opens in a normal browser tab — no sign-up, no workspace setup, and everything stays on your machine.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div>
+        <h2>Enter the endpoint URL and method</h2>
+        <p>Pick the HTTP method — <code>GET</code>, <code>POST</code>, <code>PUT</code>, <code>PATCH</code>, <code>DELETE</code>, <code>HEAD</code>, <code>OPTIONS</code> — and type the endpoint, e.g. <code>https://api.example.com/v1/users</code>. Query parameters go in the Params table and sync into the URL as you type.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <div>
+        <h2>Add headers, auth, and a body</h2>
+        <p>Most APIs need an auth header. Use the built-in auth options (Bearer token, Basic, API key) instead of typing headers by hand. For requests with a body, pick a format:</p>
+        <ul>
+          <li><strong>raw JSON</strong> — Content-Type is auto-detected and validated as you type</li>
+          <li><strong>x-www-form-urlencoded</strong> and <strong>multipart/form-data</strong> — key/value rows, including file upload</li>
+          <li><strong>XML / plain text</strong></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">4</div>
+      <div>
+        <h2>Send and inspect the response</h2>
+        <p>Hit <strong>Send</strong> (or the ⌘/Ctrl+Enter shortcut). The response panel shows status, timing, size, headers, cookies, and a collapsible JSON tree with copy-path on every node. Streaming endpoints (SSE, chunked) render chunk by chunk as they arrive — handy for AI/LLM APIs.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">5</div>
+      <div>
+        <h2>Use environments for dev / staging / prod</h2>
+        <p>Instead of editing the URL every time, define <code>{{baseUrl}}</code> once per environment and switch environments from the sidebar. The same request now targets whichever server you choose.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">6</div>
+      <div>
+        <h2>Automate checks with test scripts</h2>
+        <p>Add a post-response script with Postman-style assertions:</p>
+        <pre><code>pm.test('returns 200', () =&gt; pm.response.code === 200)
+pm.test('user list is an array', () =&gt;
+  Array.isArray(pm.response.json()))</code></pre>
+        <p>Pass/fail results appear in a Tests tab after every send, so regressions in your API show up immediately.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">7</div>
+      <div>
+        <h2>Bring your existing requests along</h2>
+        <p>Paste a cURL command into Import and Pico API reconstructs the request — or try the <a href="curl-converter.html">online cURL converter</a> first to see what will be parsed. OpenAPI/Swagger specs and ApiFox projects import as full collections.</p>
+      </div>
+    </div>
+
+    <div class="cta-row">
+      <!-- Replace href with the Chrome Web Store listing URL once published. -->
+      <a class="btn btn-primary" href="https://github.com/fengliii123/pico-api">Install Pico API — Free</a>
+      <a class="btn" href="postman-alternative.html">Pico API vs Postman</a>
+    </div>
+
+    <footer>
+      <span>Pico API — a lightweight HTTP &amp; REST client for Chrome.</span>
+      <span>
+        <a href="./">Home</a> ·
+        <a href="curl-converter.html">cURL Converter</a> ·
+        <a href="postman-alternative.html">Postman Alternative</a> ·
+        <a href="privacy.html">Privacy</a> ·
+        <a href="https://github.com/fengliii123/pico-api">GitHub</a>
+      </span>
+    </footer>
+  </div>
+</body>
+</html>

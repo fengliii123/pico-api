@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>cURL to HTTP Request Converter — Free Online Tool</title>
+  <meta name="description" content="Paste a cURL command and instantly see the parsed HTTP request — method, URL, headers, auth, and body. Free online cURL converter; import the result into Pico API, a REST client for Chrome.">
+  <link rel="canonical" href="https://fengliii123.github.io/pico-api/curl-converter.html">
+  <link rel="icon" type="image/png" href="assets/icon-128.png">
+  <meta name="robots" content="index,follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Pico API">
+  <meta property="og:title" content="cURL to HTTP Request Converter — Free Online Tool">
+  <meta property="og:description" content="Paste a cURL command, see the parsed HTTP request instantly.">
+  <meta property="og:url" content="https://fengliii123.github.io/pico-api/curl-converter.html">
+  <meta property="og:image" content="https://fengliii123.github.io/pico-api/assets/hero-1280x800.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="cURL to HTTP Request Converter — Free Online Tool">
+  <meta name="twitter:description" content="Paste a cURL command, see the parsed HTTP request instantly.">
+  <meta name="twitter:image" content="https://fengliii123.github.io/pico-api/assets/hero-1280x800.png">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Pico API", "item": "https://fengliii123.github.io/pico-api/" },
+      { "@type": "ListItem", "position": 2, "name": "cURL Converter", "item": "https://fengliii123.github.io/pico-api/curl-converter.html" }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "cURL to HTTP Request Converter",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Any",
+    "url": "https://fengliii123.github.io/pico-api/curl-converter.html",
+    "description": "Paste a cURL command and see the parsed HTTP request — method, URL, headers, auth, and body. Runs entirely in your browser.",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+  }
+  </script>
+  <style>
+    :root {
+      --bg: #ffffff; --bg-subtle: #f6f8fa; --text: #0f172a; --text-muted: #475569;
+      --border: #e2e8f0; --brand: #00B894; --brand-dark: #00997e; --brand-soft: #d1fae5;
+      --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      --mono: 'SF Mono', 'Menlo', 'Consolas', monospace;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #0f172a; --bg-subtle: #1e293b; --text: #e2e8f0; --text-muted: #94a3b8; --border: #334155; --brand: #2EE6C2; --brand-dark: #2cc9aa; --brand-soft: #134e4a; }
+    }
+    * { box-sizing: border-box; }
+    body { font-family: var(--sans); background: var(--bg); color: var(--text); line-height: 1.65; margin: 0; }
+    a { color: var(--brand-dark); }
+    .container { max-width: 880px; margin: 0 auto; padding: 0 24px; }
+    nav { display: flex; align-items: center; justify-content: space-between; padding: 18px 0; border-bottom: 1px solid var(--border); }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--text); text-decoration: none; }
+    .brand-mark { width: 28px; height: 28px; border-radius: 7px; background: var(--brand); display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 900; font-size: 16px; }
+    .nav-links { display: flex; gap: 18px; font-size: 14px; }
+    .nav-links a { color: var(--text-muted); text-decoration: none; }
+    .nav-links a:hover { color: var(--brand-dark); }
+    .crumb { font-size: 13px; color: var(--text-muted); padding: 16px 0 0; }
+    .hero { text-align: center; padding: 48px 0 24px; }
+    .hero h1 { font-size: 32px; letter-spacing: -0.02em; margin: 0 0 12px; }
+    .hero .tagline { font-size: 17px; color: var(--text-muted); max-width: 620px; margin: 0 auto; }
+    h2 { font-size: 22px; letter-spacing: -0.01em; margin: 44px 0 14px; }
+    textarea {
+      width: 100%; min-height: 150px; padding: 14px;
+      font-family: var(--mono); font-size: 13px; line-height: 1.55;
+      border: 1px solid var(--border); border-radius: 8px;
+      background: var(--bg-subtle); color: var(--text); resize: vertical;
+    }
+    textarea:focus { outline: 2px solid var(--brand); border-color: transparent; }
+    .tool-actions { display: flex; gap: 10px; margin: 12px 0 0; flex-wrap: wrap; }
+    .btn { display: inline-flex; align-items: center; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 14px; text-decoration: none; border: 1px solid var(--border); color: var(--text); background: transparent; cursor: pointer; font-family: inherit; }
+    .btn:hover { border-color: var(--brand); }
+    .btn-primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+    .btn-primary:hover { background: var(--brand-dark); }
+    .result { margin-top: 18px; }
+    .req-line { font-family: var(--mono); font-size: 14px; background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; overflow-wrap: anywhere; }
+    .req-line .m { color: var(--brand-dark); font-weight: 700; margin-right: 8px; }
+    table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 13.5px; }
+    th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { font-weight: 600; color: var(--text-muted); background: var(--bg-subtle); }
+    td:first-child { font-weight: 600; white-space: nowrap; }
+    td { overflow-wrap: anywhere; }
+    .err { color: #e5484d; font-size: 14px; margin-top: 10px; }
+    .hint { font-size: 13px; color: var(--text-muted); margin-top: 8px; }
+    code { font-family: var(--mono); background: var(--bg-subtle); padding: 2px 6px; border-radius: 4px; font-size: 0.92em; }
+    ul { padding-left: 22px; } li { margin: 6px 0; }
+    .cta-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin: 40px 0 8px; }
+    footer { margin-top: 64px; padding: 24px 0 48px; border-top: 1px solid var(--border); font-size: 13px; color: var(--text-muted); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+    footer a { color: var(--text-muted); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav>
+      <a class="brand" href="./"><span class="brand-mark">P</span><span>Pico API</span></a>
+      <div class="nav-links">
+        <a href="./#features">Features</a>
+        <a href="postman-alternative.html">Postman Alternative</a>
+        <a href="how-to-test-rest-api-in-chrome.html">Guide</a>
+        <a href="https://github.com/fengliii123/pico-api">GitHub</a>
+      </div>
+    </nav>
+
+    <p class="crumb"><a href="./">Pico API</a> › cURL Converter</p>
+
+    <header class="hero">
+      <h1>cURL to HTTP Request Converter</h1>
+      <p class="tagline">
+        Paste a cURL command — see the parsed HTTP request (method, URL,
+        headers, auth, body) instantly. Everything runs in your browser;
+        nothing is uploaded anywhere.
+      </p>
+    </header>
+
+    <main>
+      <textarea id="curlInput" spellcheck="false" placeholder="curl -X POST 'https://api.example.com/v1/users' \
+  -H 'Authorization: Bearer xxx' \
+  -H 'Content-Type: application/json' \
+  -d '{&quot;name&quot;:&quot;abc&quot;}'"></textarea>
+      <div class="tool-actions">
+        <button class="btn btn-primary" id="convertBtn" type="button">Convert</button>
+        <button class="btn" id="sampleBtn" type="button">Load sample</button>
+        <button class="btn" id="clearBtn" type="button">Clear</button>
+      </div>
+      <div class="err" id="err"></div>
+      <div class="result" id="result"></div>
+      <p class="hint" id="hint" hidden>
+        Want to send this request? <a href="./">Pico API</a> imports pasted cURL
+        commands directly (Import → cURL), so the request above is one paste away
+        from a real HTTP call with environments, scripts, and a response viewer.
+      </p>
+    </main>
+
+    <section>
+      <h2>What this tool parses</h2>
+      <ul>
+        <li>Request method: <code>-X</code> / <code>--request</code> (inferred as POST when <code>-d</code> is present)</li>
+        <li>Headers: <code>-H</code> / <code>--header</code> (repeatable)</li>
+        <li>Body: <code>-d</code> / <code>--data</code> / <code>--data-raw</code> / <code>--data-binary</code></li>
+        <li>Basic auth: <code>-u</code> / <code>--user</code></li>
+        <li>Single-quoted, double-quoted, and unquoted arguments, plus <code>\</code> line continuations</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Why convert cURL to a request?</h2>
+      <ul>
+        <li>Debug a cURL command someone pasted into a bug report or docs page</li>
+        <li>Read what a copy-as-cURL from browser DevTools actually sends</li>
+        <li>Move a one-off terminal request into a saved, editable collection</li>
+      </ul>
+    </section>
+
+    <div class="cta-row">
+      <!-- Replace href with the Chrome Web Store listing URL once published. -->
+      <a class="btn btn-primary" href="https://github.com/fengliii123/pico-api">Send it with Pico API — Free</a>
+      <a class="btn" href="postman-alternative.html">vs Postman</a>
+    </div>
+
+    <footer>
+      <span>Pico API — a lightweight HTTP &amp; REST client for Chrome.</span>
+      <span>
+        <a href="./">Home</a> ·
+        <a href="postman-alternative.html">Postman Alternative</a> ·
+        <a href="how-to-test-rest-api-in-chrome.html">Guide</a> ·
+        <a href="privacy.html">Privacy</a> ·
+        <a href="https://github.com/fengliii123/pico-api">GitHub</a>
+      </span>
+    </footer>
+  </div>
+
+  <script>
+    // Minimal cURL parser — mirrors what Pico API's import does with the
+    // common flags. Pure client-side, nothing leaves the page.
+    function tokenizeCurl(cmd) {
+      const cleaned = cmd.replace(/\\\r?\n\s*/g, ' ').trim()
+      const tokens = []
+      const re = /"([^"]*)"|'([^']*)'|(\S+)/g
+      let m
+      while ((m = re.exec(cleaned))) tokens.push(m[1] ?? m[2] ?? m[3])
+      return tokens
+    }
+
+    function parseCurl(cmd) {
+      const tokens = tokenizeCurl(cmd)
+      if (tokens[0] !== 'curl' && tokens[0] !== 'curl.exe') throw new Error('Command must start with "curl".')
+      let method = 'GET', url = '', auth = '', body = ''
+      const headers = []
+      const valueFlags = new Set(['-X', '--request', '-H', '--header', '-d', '--data', '--data-raw', '--data-binary', '--data-urlencode', '-u', '--user', '-A', '--user-agent', '-e', '--referer', '-b', '--cookie', '-o', '--output', '--url', '-m', '--max-time', '-x', '--proxy'])
+      for (let i = 1; i < tokens.length; i++) {
+        const t = tokens[i]
+        if (valueFlags.has(t)) {
+          const v = tokens[++i]
+          if (v === undefined) continue
+          if (t === '-X' || t === '--request') method = v.toUpperCase()
+          else if (t === '-H' || t === '--header') {
+            const idx = v.indexOf(':')
+            if (idx > 0) headers.push([v.slice(0, idx).trim(), v.slice(idx + 1).trim()])
+          }
+          else if (t === '-d' || t === '--data' || t === '--data-raw' || t === '--data-binary' || t === '--data-urlencode') {
+            body = v
+            if (method === 'GET') method = 'POST'
+          }
+          else if (t === '-u' || t === '--user') auth = v
+          else if (t === '-A' || t === '--user-agent') headers.push(['User-Agent', v])
+          else if (t === '-b' || t === '--cookie') headers.push(['Cookie', v])
+          else if (t === '--url') url = v
+        } else if (t.startsWith('--data=')) {
+          body = t.slice(7); if (method === 'GET') method = 'POST'
+        } else if (!t.startsWith('-') && !url) {
+          url = t
+        }
+      }
+      if (!url) throw new Error('No URL found in the command.')
+      if (auth) {
+        try { headers.push(['Authorization', 'Basic ' + btoa(auth)]) } catch (e) { /* non-latin1 */ }
+      }
+      return { method, url, headers, body }
+    }
+
+    function esc(s) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+    }
+
+    function render(req) {
+      let html = '<div class="req-line"><span class="m">' + esc(req.method) + '</span>' + esc(req.url) + '</div>'
+      if (req.headers.length) {
+        html += '<table><thead><tr><th>Header</th><th>Value</th></tr></thead><tbody>'
+        for (const [k, v] of req.headers) html += '<tr><td>' + esc(k) + '</td><td>' + esc(v) + '</td></tr>'
+        html += '</tbody></table>'
+      }
+      if (req.body) {
+        html += '<h2 style="font-size:16px;margin:18px 0 6px">Body</h2><div class="req-line" style="white-space:pre-wrap">' + esc(req.body) + '</div>'
+      }
+      return html
+    }
+
+    const input = document.getElementById('curlInput')
+    const result = document.getElementById('result')
+    const err = document.getElementById('err')
+    const hint = document.getElementById('hint')
+
+    function convert() {
+      err.textContent = ''
+      result.innerHTML = ''
+      hint.hidden = true
+      try {
+        const req = parseCurl(input.value)
+        result.innerHTML = render(req)
+        hint.hidden = false
+      } catch (e) {
+        err.textContent = e.message || 'Could not parse the command.'
+      }
+    }
+
+    document.getElementById('convertBtn').addEventListener('click', convert)
+    input.addEventListener('keydown', (e) => { if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') convert() })
+    document.getElementById('sampleBtn').addEventListener('click', () => {
+      input.value = "curl -X POST 'https://api.example.com/v1/users' \\\n  -H 'Authorization: Bearer eyJhbGciOi...' \\\n  -H 'Content-Type: application/json' \\\n  --data-raw '{\"name\":\"abc\",\"role\":\"admin\"}'"
+      convert()
+    })
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      input.value = ''; result.innerHTML = ''; err.textContent = ''; hint.hidden = true
+    })
+  </script>
+</body>
+</html>

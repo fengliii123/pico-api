@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pico API vs Postman — Lightweight Postman Alternative for Chrome</title>
+  <meta name="description" content="Looking for a Postman alternative that runs in Chrome with no account and no desktop app? Pico API is a lightweight, local-first HTTP & REST client — compare the two side by side.">
+  <link rel="canonical" href="https://fengliii123.github.io/pico-api/postman-alternative.html">
+  <link rel="icon" type="image/png" href="assets/icon-128.png">
+  <meta name="robots" content="index,follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Pico API">
+  <meta property="og:title" content="Pico API vs Postman — Lightweight Postman Alternative for Chrome">
+  <meta property="og:description" content="A local-first REST client that lives in your browser tab. No account, no workspace, no sync.">
+  <meta property="og:url" content="https://fengliii123.github.io/pico-api/postman-alternative.html">
+  <meta property="og:image" content="https://fengliii123.github.io/pico-api/assets/hero-1280x800.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Pico API vs Postman — Lightweight Postman Alternative for Chrome">
+  <meta name="twitter:description" content="A local-first REST client that lives in your browser tab. No account, no workspace, no sync.">
+  <meta name="twitter:image" content="https://fengliii123.github.io/pico-api/assets/hero-1280x800.png">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Pico API", "item": "https://fengliii123.github.io/pico-api/" },
+      { "@type": "ListItem", "position": 2, "name": "Postman Alternative", "item": "https://fengliii123.github.io/pico-api/postman-alternative.html" }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Is Pico API a free Postman alternative?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Yes. Pico API is free with all features included — request builder, environments, scripts, import and export. There is no account, no team plan, and no cloud sync to pay for." }
+      },
+      {
+        "@type": "Question",
+        "name": "Does Pico API support Postman scripts and tests?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Yes. Pre-request and post-response scripts use the Postman-style pm.* API, including pm.test assertions, pm.environment, pm.globals and pm.variables." }
+      },
+      {
+        "@type": "Question",
+        "name": "Can I import my Postman or cURL requests?",
+        "acceptedAnswer": { "@type": "Answer", "text": "You can paste any cURL command and Pico API reconstructs the request. OpenAPI/Swagger specs and ApiFox projects import as collections." }
+      },
+      {
+        "@type": "Question",
+        "name": "Where is my data stored?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Everything — collections, environments, history — is stored locally in your browser via IndexedDB. Nothing is uploaded, and there are no analytics or ads." }
+      }
+    ]
+  }
+  </script>
+  <style>
+    :root {
+      --bg: #ffffff; --bg-subtle: #f6f8fa; --text: #0f172a; --text-muted: #475569;
+      --border: #e2e8f0; --brand: #00B894; --brand-dark: #00997e; --brand-soft: #d1fae5;
+      --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      --mono: 'SF Mono', 'Menlo', 'Consolas', monospace;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #0f172a; --bg-subtle: #1e293b; --text: #e2e8f0; --text-muted: #94a3b8; --border: #334155; --brand: #2EE6C2; --brand-dark: #2cc9aa; --brand-soft: #134e4a; }
+    }
+    * { box-sizing: border-box; }
+    body { font-family: var(--sans); background: var(--bg); color: var(--text); line-height: 1.65; margin: 0; }
+    a { color: var(--brand-dark); }
+    .container { max-width: 880px; margin: 0 auto; padding: 0 24px; }
+    nav { display: flex; align-items: center; justify-content: space-between; padding: 18px 0; border-bottom: 1px solid var(--border); }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--text); text-decoration: none; }
+    .brand-mark { width: 28px; height: 28px; border-radius: 7px; background: var(--brand); display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 900; font-size: 16px; }
+    .nav-links { display: flex; gap: 18px; font-size: 14px; }
+    .nav-links a { color: var(--text-muted); text-decoration: none; }
+    .nav-links a:hover { color: var(--brand-dark); }
+    .crumb { font-size: 13px; color: var(--text-muted); padding: 16px 0 0; }
+    .hero { text-align: center; padding: 56px 0 32px; }
+    .hero h1 { font-size: 34px; letter-spacing: -0.02em; margin: 0 0 14px; }
+    .hero .tagline { font-size: 18px; color: var(--text-muted); max-width: 640px; margin: 0 auto; }
+    h2 { font-size: 24px; letter-spacing: -0.01em; margin: 48px 0 16px; }
+    table { border-collapse: collapse; width: 100%; margin: 16px 0 8px; font-size: 14.5px; }
+    th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { font-weight: 600; color: var(--text-muted); background: var(--bg-subtle); }
+    td:first-child { font-weight: 600; white-space: nowrap; }
+    .yes { color: var(--brand-dark); font-weight: 600; }
+    .cta-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin: 40px 0 8px; }
+    .btn { display: inline-flex; align-items: center; padding: 11px 22px; border-radius: 8px; font-weight: 600; font-size: 15px; text-decoration: none; border: 1px solid var(--border); color: var(--text); }
+    .btn:hover { border-color: var(--brand); }
+    .btn-primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+    .btn-primary:hover { background: var(--brand-dark); }
+    .faq h3 { font-size: 16px; margin: 22px 0 6px; }
+    .faq p { color: var(--text-muted); margin: 0 0 8px; }
+    ul { padding-left: 22px; }
+    li { margin: 6px 0; }
+    footer { margin-top: 64px; padding: 24px 0 48px; border-top: 1px solid var(--border); font-size: 13px; color: var(--text-muted); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+    footer a { color: var(--text-muted); }
+    code { font-family: var(--mono); background: var(--bg-subtle); padding: 2px 6px; border-radius: 4px; font-size: 0.92em; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav>
+      <a class="brand" href="./"><span class="brand-mark">P</span><span>Pico API</span></a>
+      <div class="nav-links">
+        <a href="./#features">Features</a>
+        <a href="curl-converter.html">cURL Converter</a>
+        <a href="how-to-test-rest-api-in-chrome.html">Guide</a>
+        <a href="https://github.com/fengliii123/pico-api">GitHub</a>
+      </div>
+    </nav>
+
+    <p class="crumb"><a href="./">Pico API</a> › Postman Alternative</p>
+
+    <header class="hero">
+      <h1>A lighter Postman alternative, inside Chrome</h1>
+      <p class="tagline">
+        Postman is a great platform — for teams that need a platform. If you
+        just want to send requests, inspect responses, and get on with your
+        day, Pico API does that in a browser tab with zero setup.
+      </p>
+      <div class="cta-row">
+        <!-- Replace href with the Chrome Web Store listing URL once published. -->
+        <a class="btn btn-primary" href="https://github.com/fengliii123/pico-api">Install for Chrome — Free</a>
+        <a class="btn" href="./">See all features</a>
+      </div>
+    </header>
+
+    <section>
+      <h2>Pico API vs Postman</h2>
+      <table>
+        <thead>
+          <tr><th></th><th>Pico API</th><th>Postman</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Runs where</td><td class="yes">Chrome tab / extension</td><td>Desktop app or web + login</td></tr>
+          <tr><td>Account required</td><td class="yes">No</td><td>Yes</td></tr>
+          <tr><td>Data location</td><td class="yes">Local browser (IndexedDB)</td><td>Cloud sync by default</td></tr>
+          <tr><td>Setup time</td><td class="yes">One click from the store</td><td>Install + sign up + workspace</td></tr>
+          <tr><td>Request builder</td><td class="yes">All methods, headers, params, auth</td><td>Full-featured</td></tr>
+          <tr><td>Body formats</td><td class="yes">JSON, XML, text, urlencoded, form-data</td><td>Full-featured</td></tr>
+          <tr><td>Streaming (SSE) live view</td><td class="yes">Built-in, real-time</td><td>Limited</td></tr>
+          <tr><td>Scripts &amp; tests</td><td class="yes">pm.* API (Postman-style)</td><td>Full JS runtime</td></tr>
+          <tr><td>cURL import</td><td class="yes">Paste &amp; parse</td><td>Import wizard</td></tr>
+          <tr><td>OpenAPI / ApiFox import</td><td class="yes">Yes</td><td>OpenAPI yes</td></tr>
+          <tr><td>Team collaboration</td><td>—</td><td>Yes (paid tiers)</td></tr>
+          <tr><td>Mock servers / monitors</td><td>—</td><td>Yes</td></tr>
+          <tr><td>Price</td><td class="yes">Free</td><td>Free tier + paid plans</td></tr>
+        </tbody>
+      </table>
+      <p style="color:var(--text-muted);font-size:13px">
+        Comparison based on Postman's public free-tier feature set as of 2026.
+      </p>
+    </section>
+
+    <section>
+      <h2>When to pick which</h2>
+      <ul>
+        <li><strong>Pick Pico API</strong> if you test your own APIs daily, value local-first
+          privacy, and want something that opens as fast as a browser tab.</li>
+        <li><strong>Pick Postman</strong> if your team shares collections through the cloud, or
+          you need mock servers, monitors, and API governance.</li>
+        <li><strong>Use both</strong> — plenty of developers keep a heavyweight client for team
+          work and a light one for quick checks. Pico API is the quick one.</li>
+      </ul>
+    </section>
+
+    <section class="faq">
+      <h2>FAQ</h2>
+      <h3>Is Pico API a free Postman alternative?</h3>
+      <p>Yes. Pico API is free with all features included — request builder, environments, scripts, import and export. There is no account, no team plan, and no cloud sync to pay for.</p>
+      <h3>Does Pico API support Postman scripts and tests?</h3>
+      <p>Yes. Pre-request and post-response scripts use the Postman-style <code>pm.*</code> API, including <code>pm.test</code> assertions, <code>pm.environment</code>, <code>pm.globals</code> and <code>pm.variables</code>.</p>
+      <h3>Can I import my Postman or cURL requests?</h3>
+      <p>You can paste any cURL command and Pico API reconstructs the request. OpenAPI/Swagger specs and ApiFox projects import as collections.</p>
+      <h3>Where is my data stored?</h3>
+      <p>Everything — collections, environments, history — is stored locally in your browser via IndexedDB. Nothing is uploaded, and there are no analytics or ads. See the <a href="privacy.html">privacy policy</a>.</p>
+    </section>
+
+    <div class="cta-row">
+      <a class="btn btn-primary" href="https://github.com/fengliii123/pico-api">Try Pico API — Free</a>
+      <a class="btn" href="https://github.com/fengliii123/pico-api">Star on GitHub</a>
+    </div>
+
+    <footer>
+      <span>Pico API — a lightweight HTTP &amp; REST client for Chrome.</span>
+      <span>
+        <a href="./">Home</a> ·
+        <a href="curl-converter.html">cURL Converter</a> ·
+        <a href="how-to-test-rest-api-in-chrome.html">Guide</a> ·
+        <a href="privacy.html">Privacy</a> ·
+        <a href="https://github.com/fengliii123/pico-api">GitHub</a>
+      </span>
+    </footer>
+  </div>
+</body>
+</html>
