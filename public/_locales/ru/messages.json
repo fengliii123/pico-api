@@ -1,0 +1,4 @@
+{
+  "extName": { "message": "HTTP и REST клиент - Pico API" },
+  "extDescription": { "message": "Лёгкий HTTP-клиент и тестирование REST API для Chrome. Отправляйте запросы и отлаживайте API без аккаунта." }
+}

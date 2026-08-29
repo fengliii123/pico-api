@@ -1,0 +1,4 @@
+{
+  "extName": { "message": "HTTP & REST Client - Pico API" },
+  "extDescription": { "message": "Lightweight HTTP client & REST API testing tool for Chrome. Send requests, debug APIs, and stream responses without leaving the tab." }
+}

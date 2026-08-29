@@ -1,0 +1,4 @@
+{
+  "extName": { "message": "HTTP・RESTクライアント - Pico API" },
+  "extDescription": { "message": "Chrome用の軽量HTTPクライアント＆REST APIテストツール。リクエスト送信、APIデバッグ、ストリーミング表示がアカウント不要で。" }
+}
