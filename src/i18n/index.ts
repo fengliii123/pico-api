@@ -478,6 +478,10 @@ export interface Translations {
   deleteSelected: string
   deleteSelectedConfirm: string
   copyPath: string
+  ratingPromptTitle: string
+  ratingPromptContent: string
+  ratingPromptGo: string
+  ratingPromptLater: string
 
   // Request pipeline error messages (useRequestExecution)
   errUnsupportedProtocol: string
@@ -922,6 +926,10 @@ const en: Translations = {
   deleteSelected: 'Delete selected ({n})',
   deleteSelectedConfirm: 'Delete the {n} selected history entries?',
   copyPath: 'Copy path',
+  ratingPromptTitle: 'Enjoying Pico API?',
+  ratingPromptContent: 'If it helps your daily work, a rating on the Chrome Web Store helps other developers find it. Takes 10 seconds.',
+  ratingPromptGo: 'Rate it',
+  ratingPromptLater: 'Maybe later',
 
   // Request pipeline error messages (useRequestExecution)
   errUnsupportedProtocol: '{label}: unsupported protocol {protocol} — only http and https are allowed.',
@@ -1366,6 +1374,10 @@ const zhCN: Translations = {
   deleteSelected: '删除所选（{n}）',
   deleteSelectedConfirm: '确定删除所选的 {n} 条历史记录吗？',
   copyPath: '复制路径',
+  ratingPromptTitle: '用得还顺手吗？',
+  ratingPromptContent: '如果 Pico API 对你有帮助，去 Chrome 应用商店打个分吧——能帮更多开发者发现它，只需 10 秒。',
+  ratingPromptGo: '去评分',
+  ratingPromptLater: '以后再说',
 
   // Request pipeline error messages (useRequestExecution)
   errUnsupportedProtocol: '{label}：不支持的协议 {protocol}——仅允许 http 和 https。',

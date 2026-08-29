@@ -4,6 +4,23 @@ All notable changes to Pico API are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.6] — 2026-08-29
+
+Store visibility release.
+
+### Changed
+
+- **Extension name now leads with search keywords**: "HTTP & REST Client -
+  Pico API" (was "Pico API - HTTP & REST Client"). Update the store listing
+  names for every language to match.
+
+### Added
+
+- **One-time rating prompt**: after 15 successful sends, a single
+  dismissible dialog links to the Chrome Web Store review page. Never
+  shown twice; counts and state live in localStorage.
+- Feedback link in Settings now points to the real store review URL.
+
 ## [1.0.5] — 2026-08-26
 
 Stability and polish release: streaming memory caps, Postman-compatible

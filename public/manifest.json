@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Pico API - HTTP & REST Client",
+  "name": "HTTP & REST Client - Pico API",
   "short_name": "Pico",
-  "version": "1.0.5",
-  "version_name": "1.0.5",
+  "version": "1.0.6",
+  "version_name": "1.0.6",
   "description": "Lightweight HTTP client & REST API testing tool for Chrome. Send requests, debug APIs, and stream responses without leaving the tab.",
   "minimum_chrome_version": "116",
   "icons": {

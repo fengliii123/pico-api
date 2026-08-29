@@ -45,9 +45,8 @@ const appVersion = computed(() => {
 
 // TODO: replace with the real support URL once the listing goes live.
 // Surfacing it here satisfies the Chrome Web Store "visible feedback channel"
-// expectation. For now this points at the Chrome Web Store listing detail
-// page pattern so it resolves to *something* even before the URL is known.
-const feedbackUrl = 'https://chromewebstore.google.com/detail/pico-api/reviews'
+// expectation. Points at the store review page for the published item.
+const feedbackUrl = 'https://chromewebstore.google.com/detail/nckjedkhineddehjkdlgaibfgpacmhcl/reviews'
 
 function changeLocale(l: Locale) {
   if (l === locale.value) return

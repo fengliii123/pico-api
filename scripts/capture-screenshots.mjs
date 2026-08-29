@@ -106,8 +106,10 @@ try {
   // Shot 1 — main view, send a real request, response in tree mode
   // =========================================================
   // Type a real public API endpoint that returns rich JSON.
+  // jsonplaceholder is rate-limit-free and stable — GitHub's API 403s
+  // anonymous calls, which produced an error-response screenshot.
   const urlInput = page.locator('input[placeholder*="api.example.com"]').first()
-  await urlInput.fill('https://api.github.com/repos/vuejs/core')
+  await urlInput.fill('https://jsonplaceholder.typicode.com/users/1')
   // Find the Send button — it's the primary button at the end of the toolbar.
   // The URL bar input is wrapped in a flex row with the Send button.
   // Click by visible text to be resilient to DOM changes.

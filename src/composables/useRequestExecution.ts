@@ -18,6 +18,7 @@ import { uid } from '@/utils/id'
 import type { EnvironmentVariable, HistoryEntry, ResponseResult } from '@/core/types'
 import { useI18n } from '@/i18n/useI18n'
 import { fmt } from '@/i18n'
+import { recordSuccessfulSend, showRatingPromptIfDue } from '@/utils/ratingPrompt'
 
 // Shared across composable instances so Cancel from the toolbar always
 // reaches the one in-flight HTTP request.
@@ -319,6 +320,10 @@ export function useRequestExecution() {
         resStore.setResult(result, post.testResults, { preRequest: preRequest.logs, postResponse: post.logs })
       }
       await recordHistory(result.status, result.time, result.body.size)
+
+      // One-time rating prompt after enough successful sends.
+      recordSuccessfulSend()
+      showRatingPromptIfDue()
     } catch (e: any) {
       if (e?.errorKind === 'aborted' || signal.aborted) {
         resStore.setError({ message: t.value.requestCancelled, errorKind: 'aborted' })
