@@ -10,7 +10,10 @@ import type { ResponseResult } from './types'
 export function extractResourceTiming(url: string): ResponseResult['timing'] | undefined {
   try {
     const entries = performance.getEntriesByName(url, 'resource') as PerformanceResourceTiming[]
-    const entry = entries.find(e => e.responseEnd > e.startTime)
+    // The same URL can be requested repeatedly (resend) — resource timing keeps
+    // one entry per request, so pick the newest completed one, not the first.
+    // (reverse+find instead of findLast: the tsconfig lib target predates it)
+    const entry = [...entries].reverse().find(e => e.responseEnd > e.startTime)
     if (!entry) return undefined
     return {
       dns:     Math.max(0, Math.round(entry.domainLookupEnd - entry.domainLookupStart)),
