@@ -43,8 +43,7 @@ const appVersion = computed(() => {
   return '0.1.0'
 })
 
-// TODO: replace with the real support URL once the listing goes live.
-// Surfacing it here satisfies the Chrome Web Store "visible feedback channel"
+// Surfacing this satisfies the Chrome Web Store "visible feedback channel"
 // expectation. Points at the store review page for the published item.
 const feedbackUrl = 'https://chromewebstore.google.com/detail/nckjedkhineddehjkdlgaibfgpacmhcl/reviews'
 
