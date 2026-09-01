@@ -157,7 +157,7 @@
           </div>
           <div class="meta-row"><span class="status"><span class="dot" id="connDot"></span><span id="connStatus">idle</span></span><span id="connChunks">0 events</span></div>
           <pre class="stream-box" id="connStream"></pre>
-          <p class="hint">Uses the native <code>EventSource</code> API, so the endpoint must allow cross-origin requests — your own dev endpoints often do. Public feeds may be blocked on some networks.</p>
+          <p class="hint">Leave the URL empty and press <strong>Connect</strong> for a built-in demo stream — generated locally by a service worker, works offline. Or paste any SSE endpoint; it must allow cross-origin requests. Public feeds may be blocked on some networks.</p>
           <p class="err" id="connErr" hidden></p>
         </div>
       </div>
@@ -317,12 +317,18 @@
       box.scrollTop = box.scrollHeight
     }
 
-    $('connBtn').addEventListener('click', function () {
+    $('connBtn').addEventListener('click', async function () {
       var url = $('sseUrl').value.trim()
+      var demo = false
       if (!url) {
-        $('connErr').textContent = 'Enter an SSE endpoint URL first — or load the public feed below.'
-        $('connErr').hidden = false
-        return
+        if (!('serviceWorker' in navigator)) {
+          $('connErr').textContent = 'Enter an SSE endpoint URL first — or load the public feed below.'
+          $('connErr').hidden = false
+          return
+        }
+        await navigator.serviceWorker.ready
+        url = './demo-stream'
+        demo = true
       }
       $('connErr').hidden = true
       $('connStream').textContent = ''
@@ -340,7 +346,7 @@
         connFinish('error', 'err')
         return
       }
-      es.onopen = function () { $('connStatus').textContent = 'connected' }
+      es.onopen = function () { $('connStatus').textContent = demo ? 'connected · demo stream (local)' : 'connected' }
       es.onmessage = function (ev) {
         connCount++
         $('connChunks').textContent = connCount + (connCount === 1 ? ' event' : ' events')
@@ -366,6 +372,13 @@
       $('sseUrl').value = 'https://stream.wikimedia.org/v2/stream/recentchange'
       $('connErr').hidden = true
     })
+
+    // The built-in demo stream (empty URL → ./demo-stream) is synthesized by
+    // this service worker; registration is best-effort, the tester degrades
+    // gracefully without it.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sse-worker.js').catch(function () {})
+    }
   </script>
 </body>
 </html>
