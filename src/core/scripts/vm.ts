@@ -42,9 +42,19 @@ export interface PmApi {
     to: {
       have: {
         status(code: number): void
+        header(name: string, value?: string): void
+        body(expected?: string): void
       }
       be: {
         below(ceiling: number): { above(floor: number): void }
+        readonly ok: void
+        readonly created: void
+        readonly accepted: void
+        readonly badRequest: void
+        readonly unauthorized: void
+        readonly forbidden: void
+        readonly notFound: void
+        readonly serverError: void
       }
     }
   }
@@ -62,14 +72,51 @@ export interface PmApi {
 
 export interface Assertion {
   to: {
+    // chai-idiomatic forms without `.be`: expect(x).to.eql(y), to.include, …
+    equal(expected: any): void
+    eql(expected: any): void
+    include(expected: any): void
+    a(type: string): void
+    an(type: string): void
     have: {
       status(code: number): void
     }
     be: {
       below(ceiling: number): void
       above(floor: number): void
+      equal(expected: any): void
+      eql(expected: any): void
+      include(expected: any): void
+      a(type: string): void
+      an(type: string): void
+      readonly ok: void
+      readonly empty: void
+      readonly null: void
+      readonly undefined: void
+      readonly defined: void
+      readonly exist: void
+      readonly true: void
+      readonly false: void
     }
   }
+}
+
+// Structural deep-equality for pm.expect().to.eql — keys are compared
+// order-insensitively; arrays must have the same length and items.
+function deepEqual(a: any, b: any): boolean {
+  if (a === b) return true
+  if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') return false
+  if (Array.isArray(a) !== Array.isArray(b)) return false
+  const ka = Object.keys(a)
+  const kb = Object.keys(b)
+  if (ka.length !== kb.length) return false
+  return ka.every(k => deepEqual(a[k], b[k]))
+}
+
+function typeName(v: any): string {
+  if (Array.isArray(v)) return 'array'
+  if (v === null) return 'null'
+  return typeof v
 }
 
 export interface TestResult {
@@ -288,14 +335,34 @@ export function createPmApi(
       get statusText() { return response?.statusText ?? '' },
       get headers() { return responseHeaders },
       get responseTime() { return response?.time ?? 0 },
-      // pm.response.to.have.status(200) - Postman-style chainable assertion
+      // pm.response.to.* — Postman-style chainable assertions
       get to() {
         const actual = response?.status ?? 0
+        const fail = (msg: string): never => { throw new Error(msg) }
+        const statusIs = (code: number, label: string) => {
+          if (actual !== code) fail(`expected status ${actual} to be ${code} (${label})`)
+        }
         return {
           have: {
             status: (code: number) => {
               if (actual !== code) {
-                throw new Error(`expected ${actual} to equal ${code}`)
+                fail(`expected ${actual} to equal ${code}`)
+              }
+            },
+            header: (name: string, value?: string) => {
+              const key = name.toLowerCase()
+              if (!Object.prototype.hasOwnProperty.call(responseHeaders, key)) {
+                fail(`expected header "${name}" to exist`)
+              }
+              if (value !== undefined && responseHeaders[key] !== value) {
+                fail(`expected header "${name}" to be ${JSON.stringify(value)} but got ${JSON.stringify(responseHeaders[key])}`)
+              }
+            },
+            body: (expected?: string) => {
+              if (expected === undefined) {
+                if (!responseText) fail('expected response body to be non-empty')
+              } else if (!responseText.includes(expected)) {
+                fail(`expected body to include ${JSON.stringify(expected)}`)
               }
             }
           },
@@ -303,10 +370,18 @@ export function createPmApi(
             below: (ceiling: number) => ({
               above: (floor: number) => {
                 if (actual >= ceiling || actual <= floor) {
-                  throw new Error(`expected ${actual} to be between ${floor} and ${ceiling}`)
+                  fail(`expected ${actual} to be between ${floor} and ${ceiling}`)
                 }
               }
-            })
+            }),
+            get ok() { if (!(actual >= 200 && actual < 300)) fail(`expected status ${actual} to be 2xx`); return undefined },
+            get created() { statusIs(201, 'created'); return undefined },
+            get accepted() { statusIs(202, 'accepted'); return undefined },
+            get badRequest() { statusIs(400, 'bad request'); return undefined },
+            get unauthorized() { statusIs(401, 'unauthorized'); return undefined },
+            get forbidden() { statusIs(403, 'forbidden'); return undefined },
+            get notFound() { statusIs(404, 'not found'); return undefined },
+            get serverError() { if (!(actual >= 500 && actual < 600)) fail(`expected status ${actual} to be 5xx`); return undefined }
           }
         }
       },
@@ -342,27 +417,90 @@ export function createPmApi(
       }
     },
     expect(actual: any): Assertion {
+      const fail = (msg: string): never => { throw new Error(msg) }
+      const show = (v: any) => {
+        try { return JSON.stringify(v) ?? String(v) } catch { return String(v) }
+      }
+      // Value assertions live on both `to` and `to.be` — Postman scripts use
+      // both spellings (expect(x).to.eql(y) and expect(x).to.be.eql(y)).
+      const valueAssertions = {
+        equal(expected: any) {
+          if (actual !== expected) {
+            fail(`expected ${show(actual)} to equal ${show(expected)}`)
+          }
+        },
+        eql(expected: any) {
+          if (!deepEqual(actual, expected)) {
+            fail(`expected ${show(actual)} to deeply equal ${show(expected)}`)
+          }
+        },
+        include(expected: any) {
+          if (typeof actual === 'string') {
+            if (!actual.includes(String(expected))) {
+              fail(`expected ${show(actual)} to include ${show(expected)}`)
+            }
+          } else if (Array.isArray(actual)) {
+            if (!actual.some(x => deepEqual(x, expected))) {
+              fail(`expected array to include ${show(expected)}`)
+            }
+          } else if (actual && typeof actual === 'object') {
+            if (!Object.prototype.hasOwnProperty.call(actual, String(expected))) {
+              fail(`expected object to have key ${show(expected)}`)
+            }
+          } else {
+            fail(`expected ${show(actual)} to include ${show(expected)}`)
+          }
+        },
+        a(type: string) {
+          const t = typeName(actual)
+          if (t !== type) fail(`expected ${show(actual)} (${t}) to be a ${type}`)
+        },
+        an(type: string) {
+          const t = typeName(actual)
+          if (t !== type) fail(`expected ${show(actual)} (${t}) to be an ${type}`)
+        }
+      }
+      const be = {
+        ...valueAssertions,
+        below(ceiling: number) {
+          if (actual >= ceiling) {
+            fail(`expected ${actual} to be below ${ceiling}`)
+          }
+        },
+        above(floor: number) {
+          if (actual <= floor) {
+            fail(`expected ${actual} to be above ${floor}`)
+          }
+        },
+        get ok() { if (!actual) return fail(`expected ${show(actual)} to be truthy`); return undefined },
+        get empty() {
+          if (actual === null || actual === undefined) {
+            return fail(`expected ${show(actual)} to be empty`)
+          } else if (typeof actual === 'string' || Array.isArray(actual)) {
+            if (actual.length !== 0) return fail(`expected value of length ${actual.length} to be empty`)
+          } else if (typeof actual === 'object') {
+            if (Object.keys(actual).length !== 0) return fail('expected object to be empty')
+          }
+          return undefined
+        },
+        get null() { if (actual !== null) return fail(`expected ${show(actual)} to be null`); return undefined },
+        get undefined() { if (actual !== undefined) return fail(`expected ${show(actual)} to be undefined`); return undefined },
+        get defined() { if (actual === undefined) return fail('expected value to be defined'); return undefined },
+        get exist() { if (actual === undefined || actual === null) return fail('expected value to exist'); return undefined },
+        get true() { if (actual !== true) return fail(`expected ${show(actual)} to be true`); return undefined },
+        get false() { if (actual !== false) return fail(`expected ${show(actual)} to be false`); return undefined }
+      }
       return {
         to: {
+          ...valueAssertions,
           have: {
             status(code: number) {
               if (actual !== code) {
-                throw new Error(`expected ${actual} to equal ${code}`)
+                fail(`expected ${actual} to equal ${code}`)
               }
             }
           },
-          be: {
-            below(ceiling: number) {
-              if (actual >= ceiling) {
-                throw new Error(`expected ${actual} to be below ${ceiling}`)
-              }
-            },
-            above(floor: number) {
-              if (actual <= floor) {
-                throw new Error(`expected ${actual} to be above ${floor}`)
-              }
-            }
-          }
+          be
         }
       }
     },
