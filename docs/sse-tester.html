@@ -154,7 +154,7 @@
           </div>
           <div class="meta-row"><span class="status"><span class="dot" id="connDot"></span><span id="connStatus">idle</span></span><span id="connChunks">0 events</span></div>
           <pre class="stream-box" id="connStream"></pre>
-          <p class="hint">Leave the URL empty and press <strong>Connect</strong> for a built-in demo stream — generated locally by a service worker, works offline. Or paste an SSE endpoint you're developing against; it must allow cross-origin requests (CORS).</p>
+          <p class="hint">Leave the URL empty and press <strong>Connect</strong> for a built-in demo stream — generated locally by a service worker, works offline. Or paste an SSE endpoint you're developing against; it must allow cross-origin requests (CORS) and use <code>https://</code> (<code>http://localhost</code> is fine).</p>
           <p class="err" id="connErr" hidden></p>
         </div>
       </div>
@@ -326,6 +326,12 @@
         await navigator.serviceWorker.ready
         url = './demo-stream'
         demo = true
+      }
+      if (location.protocol === 'https:' && /^http:\/\//i.test(url) && !/^http:\/\/(localhost|127\.0\.0\.1)([:\/]|$)/i.test(url)) {
+        $('connErr').textContent = 'This page is served over HTTPS, so the browser blocks plain http:// endpoints (mixed content). Use an https:// URL — http://localhost is allowed. The Pico API extension has no such restriction.'
+        $('connErr').hidden = false
+        connFinish('blocked', 'err')
+        return
       }
       $('connErr').hidden = true
       $('connStream').textContent = ''
