@@ -1,5 +1,6 @@
-// OpenAPI 3.x → DraftRequest[]. $refs are not resolved; per-operation issues
-// become warnings. Server URLs map to {{baseUrl}} + path; path params → {{name}}.
+// OpenAPI 3.x → DraftRequest[]. Local $refs (#/components/…, #/definitions/…)
+// are resolved before schemas are read; per-operation issues become warnings.
+// Server URLs map to {{baseUrl}} + path; path params → {{name}}.
 
 import * as yaml from 'js-yaml'
 import type {
@@ -42,6 +43,64 @@ export interface ImportResultDetailed extends ImportResult {
   baseUrlValue?: string
 }
 
+// ----- $ref resolution -----
+//
+// Real-world specs lean heavily on local JSON pointers. We resolve them
+// lazily at the spots the importer reads (parameters, requestBody, and the
+// schemas under them) rather than normalizing the whole document — cheaper,
+// and keeps unknown sections untouched.
+
+const MAX_DEREF_DEPTH = 20
+
+// Resolve a local pointer like "#/components/schemas/User" against the doc.
+// Handles both OAS3 (#/components/…) and Swagger 2 (#/definitions/…) shapes,
+// since the 2.0→3.0 upgrade moves definitions but doesn't rewrite ref paths.
+// Returns undefined for external refs (file.yaml#/x) or broken pointers.
+function resolvePointer(ref: string, doc: any): any {
+  if (!ref.startsWith('#/')) return undefined
+  const walk = (p: string) => {
+    let cur: any = doc
+    for (const rawSeg of p.slice(2).split('/')) {
+      if (cur === null || typeof cur !== 'object') return undefined
+      const key = rawSeg.replace(/~1/g, '/').replace(/~0/g, '~')
+      cur = cur[key]
+    }
+    return cur
+  }
+  const direct = walk(ref)
+  // Swagger 2 legacy pointer: the upgrade merged `definitions` into
+  // `components.schemas` and dropped the original section, so retry there.
+  if (direct === undefined && ref.startsWith('#/definitions/')) {
+    return walk('#/components/schemas/' + ref.slice('#/definitions/'.length))
+  }
+  return direct
+}
+
+// Walk a node and replace every {$ref: '#/…'} with the referenced value
+// (recursively). Cycle/depth guard: past MAX_DEREF_DEPTH the remaining refs
+// are left in place — downstream readers treat them as opaque empty schemas.
+// External/unresolvable refs become {} and are reported via `unresolved`.
+function derefNode(node: any, doc: any, unresolved: Set<string>, depth = 0): any {
+  if (depth > MAX_DEREF_DEPTH) return node
+  if (Array.isArray(node)) {
+    return node.map(n => derefNode(n, doc, unresolved, depth + 1))
+  }
+  if (!node || typeof node !== 'object') return node
+  if (typeof node.$ref === 'string') {
+    const target = resolvePointer(node.$ref, doc)
+    if (target === undefined) {
+      unresolved.add(node.$ref)
+      return {}
+    }
+    return derefNode(target, doc, unresolved, depth + 1)
+  }
+  const out: Record<string, any> = {}
+  for (const [k, v] of Object.entries(node)) {
+    out[k] = derefNode(v, doc, unresolved, depth + 1)
+  }
+  return out
+}
+
 export function parseOpenApi(raw: string): ImportResultDetailed {
   const warnings: string[] = []
   let doc: any
@@ -82,6 +141,7 @@ export function parseOpenApi(raw: string): ImportResultDetailed {
 
   const baseUrl = resolveBaseUrl(doc)
   const operations: ImportedOperation[] = []
+  const unresolvedRefs = new Set<string>()
   const paths = doc.paths ?? {}
 
   for (const [pathKey, pathItem] of Object.entries(paths)) {
@@ -93,13 +153,17 @@ export function parseOpenApi(raw: string): ImportResultDetailed {
       const op: Operation | undefined = (pathItem as any)[method]
       if (!op) continue
       try {
-        const request = buildDraftRequest(method.toUpperCase() as HttpMethod, pathKey, op, sharedParams, baseUrl)
+        const request = buildDraftRequest(method.toUpperCase() as HttpMethod, pathKey, op, sharedParams, baseUrl, doc, unresolvedRefs)
         const tag = (op.tags?.[0] ?? '').trim()
         operations.push({ request, tag })
       } catch (e: any) {
         warnings.push(`${method.toUpperCase()} ${pathKey}: ${e?.message ?? e}`)
       }
     }
+  }
+
+  if (unresolvedRefs.size > 0) {
+    warnings.push(`Unresolved $ref(s) skipped: ${[...unresolvedRefs].join(', ')}`)
   }
 
   // The folder map / dedup happens in the store layer, which knows about
@@ -161,14 +225,21 @@ function buildDraftRequest(
   pathKey: string,
   op: Operation,
   sharedParams: Parameter[],
-  baseUrl: BaseUrlResolution
+  baseUrl: BaseUrlResolution,
+  doc: any,
+  unresolvedRefs: Set<string>
 ): DraftRequest {
-  const allParams = [...sharedParams, ...(op.parameters ?? [])]
+  // $refs can appear as whole parameter entries (…/parameters/X), on the
+  // requestBody (…/requestBodies/X), and anywhere inside schemas. Resolve
+  // before reading so the downstream logic only ever sees concrete nodes.
+  const allParams = [...sharedParams, ...(op.parameters ?? [])].map(
+    p => derefNode(p, doc, unresolvedRefs) as Parameter
+  )
   const params: KeyValueRow[] = []
   const headers: KeyValueRow[] = []
 
   for (const p of allParams) {
-    const value = pickExampleOrPlaceholder(p.schema ?? p)
+    const value = pickExampleOrPlaceholder(derefNode(p.schema, doc, unresolvedRefs) ?? p)
     if (p.in === 'query') {
       params.push({ key: p.name, value, enabled: !p.deprecated })
     } else if (p.in === 'header') {
@@ -182,7 +253,11 @@ function buildDraftRequest(
   }
 
   // Body — pick the first content type we recognise.
-  const body = inferBodyFromRequest(op.requestBody)
+  const body = inferBodyFromRequest(
+    op.requestBody ? derefNode(op.requestBody, doc, unresolvedRefs) : undefined,
+    doc,
+    unresolvedRefs
+  )
 
   // Build the URL:
   //   - With a server URL: `{{baseUrl}} + path` where path is the
@@ -241,7 +316,11 @@ function stringifyExample(v: unknown): string {
 }
 
 // Convert an OAS3 requestBody into our app's RequestBody model.
-function inferBodyFromRequest(rb?: Operation['requestBody']): AppRequestBody {
+function inferBodyFromRequest(
+  rb: Operation['requestBody'] | undefined,
+  doc: any,
+  unresolvedRefs: Set<string>
+): AppRequestBody {
   if (!rb?.content) return { mode: 'none' }
   const entries = Object.entries(rb.content) as Array<[string, MediaType]>
   // Prefer JSON > urlencoded > multipart > first available
@@ -254,7 +333,8 @@ function inferBodyFromRequest(rb?: Operation['requestBody']): AppRequestBody {
   if (!chosen) chosen = entries[0]
   if (!chosen) return { mode: 'none' }
 
-  const [ct, media] = chosen
+  const [ct, mediaRaw] = chosen
+  const media: MediaType = { ...mediaRaw, schema: derefNode(mediaRaw.schema, doc, unresolvedRefs) }
   const lower = ct.toLowerCase()
 
   if (lower.includes('application/x-www-form-urlencoded')) {
@@ -298,15 +378,17 @@ function schemaToFormRows(schema?: Schema): any[] {
 }
 
 // Generate an example string from a schema: prefer schema.example, then
-// build a minimal JSON object from `properties`. Returns undefined if
-// we can't produce anything sensible.
+// per-property example/default/enum[0] (mirroring pickExampleOrPlaceholder),
+// then type defaults. Returns undefined if we can't produce anything
+// sensible.
 function schemaExample(schema?: Schema): unknown {
   if (!schema) return undefined
   if (schema.example !== undefined) return schema.example
   if (schema.properties) {
     const obj: Record<string, unknown> = {}
     for (const [k, sub] of Object.entries(schema.properties)) {
-      obj[k] = (sub as any).example ?? defaultValueForType(sub as Schema)
+      const s = sub as any
+      obj[k] = s.example ?? s.default ?? (Array.isArray(s.enum) && s.enum.length ? s.enum[0] : defaultValueForType(s))
     }
     return obj
   }
