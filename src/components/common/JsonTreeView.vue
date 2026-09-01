@@ -18,9 +18,14 @@ interface TreeNode {
   value: any
   type: 'object' | 'array' | 'string' | 'number' | 'boolean' | 'null'
   path: string
+  parentPath: string | null
   depth: number
-  collapsed?: boolean
 }
+
+// Beyond this many flattened nodes the tree stops rendering entirely —
+// Vue re-rendering tens of thousands of rows freezes the panel. The user
+// still has Pretty/Raw for the same body.
+const TREE_NODE_LIMIT = 10_000
 
 const allCollapsed = ref(false)
 const searchQuery = ref('')
@@ -32,51 +37,40 @@ function getType(value: any): TreeNode['type'] {
   return typeof value as TreeNode['type']
 }
 
-function buildTree(data: any, path: string = '', depth: number = 0): TreeNode[] {
+function buildTree(data: any, path: string = '', depth: number = 0, parentPath: string | null = null): TreeNode[] {
   const nodes: TreeNode[] = []
   const type = getType(data)
 
   if (type === 'object' && data !== null) {
     const keys = Object.keys(data)
-    nodes.push({
-      key: path || 'root',
-      value: data,
-      type,
-      path,
-      depth,
-      collapsed: allCollapsed.value
-    })
+    nodes.push({ key: path || 'root', value: data, type, path, parentPath, depth })
     for (const key of keys) {
       const childPath = path ? `${path}.${key}` : key
-      nodes.push(...buildTree(data[key], childPath, depth + 1))
+      nodes.push(...buildTree(data[key], childPath, depth + 1, path))
     }
   } else if (type === 'array') {
-    nodes.push({
-      key: path || 'root',
-      value: data,
-      type,
-      path,
-      depth,
-      collapsed: allCollapsed.value
-    })
+    nodes.push({ key: path || 'root', value: data, type, path, parentPath, depth })
     data.forEach((item: any, index: number) => {
       const childPath = `${path}[${index}]`
-      nodes.push(...buildTree(item, childPath, depth + 1))
+      nodes.push(...buildTree(item, childPath, depth + 1, path))
     })
   } else {
-    nodes.push({
-      key: path,
-      value: data,
-      type,
-      path,
-      depth
-    })
+    nodes.push({ key: path, value: data, type, path, parentPath, depth })
   }
 
   return nodes
 }
 
 const treeData = computed(() => buildTree(props.data))
+const tooLarge = computed(() => treeData.value.length > TREE_NODE_LIMIT)
+
+// path → parentPath lookup so visibility can walk ancestor links instead
+// of re-parsing path strings on every render.
+const parentOf = computed(() => {
+  const m = new Map<string, string | null>()
+  for (const n of treeData.value) m.set(n.path, n.parentPath)
+  return m
+})
 
 const collapsedKeys = ref<Set<string>>(new Set())
 
@@ -165,39 +159,15 @@ function getDisplayKey(path: string): string {
   return parts[parts.length - 1]
 }
 
-// Check if we should render this node (parent must be expanded)
+// Check if we should render this node: every ancestor up the chain must
+// be expanded. Walks the precomputed parentPath links — no string parsing.
 function shouldRender(node: TreeNode): boolean {
-  if (node.depth === 0) return true
-
-  // Find parent key
-  const pathParts = node.path.split(/[.[\]_]/)
-  pathParts.pop()
-  let parentKey = pathParts.join('.')
-
-  // Handle array indices
-  parentKey = parentKey.replace(/\[\d+\]/g, (m) => `.${m.slice(1, -1)}`)
-
-  return !isCollapsed(parentKey)
-}
-
-// Count children
-function countChildren(node: TreeNode): { objects: number; arrays: number; primitives: number } {
-  if (!isContainer(node)) return { objects: 0, arrays: 0, primitives: 1 }
-
-  let objects = 0, arrays = 0, primitives = 0
-  const children = treeData.value.filter(n => {
-    const nodeParent = n.path.split(/[.[\]_]/).slice(0, -1).join('.')
-    return nodeParent === node.path || n.path.startsWith(node.path + '.') || n.path.startsWith(node.path + '[')
-  })
-
-  for (const child of children) {
-    if (child.depth === node.depth) continue
-    if (child.type === 'object') objects++
-    else if (child.type === 'array') arrays++
-    else primitives++
+  let cur: string | null = node.parentPath
+  while (cur !== null) {
+    if (collapsedKeys.value.has(cur)) return false
+    cur = parentOf.value.get(cur) ?? null
   }
-
-  return { objects, arrays, primitives }
+  return true
 }
 
 // Collapse to specific depth
@@ -240,7 +210,10 @@ function collapseToDepth(maxDepth: number) {
         </Button>
       </div>
     </div>
-    <div class="json-tree-content">
+    <div v-if="tooLarge" class="json-tree-too-large">
+      {{ t.treeTooLarge }}
+    </div>
+    <div v-else class="json-tree-content">
       <template v-for="node in filteredNodes" :key="node.path">
         <div
           v-if="shouldRender(node)"
@@ -307,6 +280,12 @@ function collapseToDepth(maxDepth: number) {
 .toolbar-actions {
   display: flex;
   gap: var(--space-1);
+}
+
+.json-tree-too-large {
+  padding: var(--space-6) var(--space-5);
+  color: var(--status-warning-fg);
+  font-size: var(--fs-sm);
 }
 
 .json-tree-content {

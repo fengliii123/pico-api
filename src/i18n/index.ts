@@ -209,6 +209,7 @@ export interface Translations {
   // ResponsePanel
   sending: string
   largePrettyOff: string
+  treeTooLarge: string
   truncated: string
   prettyView: string
   treeView: string
@@ -675,6 +676,7 @@ const en: Translations = {
 
   sending: 'Sending...',
   largePrettyOff: 'large · pretty off',
+  treeTooLarge: 'JSON too large for the tree view — switch to Pretty or Raw',
   truncated: 'truncated',
   prettyView: 'Pretty',
   treeView: 'Tree',
@@ -1123,6 +1125,7 @@ const zhCN: Translations = {
 
   sending: '发送中...',
   largePrettyOff: '较大 · 已关闭美化',
+  treeTooLarge: 'JSON 过大，树视图已停用——请切换到美化或原始视图',
   truncated: '已截断',
   prettyView: '美化',
   treeView: '树形',
