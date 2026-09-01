@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Postman 替代品:Pico API — Chrome 轻量接口测试插件(免登录)</title>
+  <meta name="description" content="寻找 Postman 替代品?Pico API 是运行在 Chrome 里的轻量 HTTP / REST 接口测试插件:免注册免登录、数据全部本地存储、流式响应实时渲染,支持导入 cURL / OpenAPI / ApiFox 项目。">
+  <link rel="canonical" href="https://fengliii123.github.io/pico-api/postman-alternative.zh-CN.html">
+  <link rel="alternate" hreflang="en" href="https://fengliii123.github.io/pico-api/postman-alternative.html">
+  <link rel="alternate" hreflang="zh-CN" href="https://fengliii123.github.io/pico-api/postman-alternative.zh-CN.html">
+  <link rel="alternate" hreflang="x-default" href="https://fengliii123.github.io/pico-api/postman-alternative.html">
+  <link rel="icon" type="image/png" href="assets/icon-128.png">
+  <meta name="robots" content="index,follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Pico API">
+  <meta property="og:title" content="Postman 替代品:Pico API — Chrome 轻量接口测试插件(免登录)">
+  <meta property="og:description" content="免注册、本地存储、流式响应实时渲染的 REST 客户端,就开在浏览器标签页里。">
+  <meta property="og:url" content="https://fengliii123.github.io/pico-api/postman-alternative.zh-CN.html">
+  <meta property="og:image" content="https://fengliii123.github.io/pico-api/assets/hero-1280x800.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Postman 替代品:Pico API — Chrome 轻量接口测试插件(免登录)">
+  <meta name="twitter:description" content="免注册、本地存储、流式响应实时渲染的 REST 客户端,就开在浏览器标签页里。">
+  <meta name="twitter:image" content="https://fengliii123.github.io/pico-api/assets/hero-1280x800.png">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Pico API", "item": "https://fengliii123.github.io/pico-api/" },
+      { "@type": "ListItem", "position": 2, "name": "Postman 替代品", "item": "https://fengliii123.github.io/pico-api/postman-alternative.zh-CN.html" }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Pico API 是免费的 Postman 替代品吗?",
+        "acceptedAnswer": { "@type": "Answer", "text": "是。Pico API 全功能免费——请求构造、环境变量、脚本测试、导入导出全部包含。没有账号、没有团队套餐,也不存在需要付费的云同步。" }
+      },
+      {
+        "@type": "Question",
+        "name": "支持 Postman 的脚本和断言吗?",
+        "acceptedAnswer": { "@type": "Answer", "text": "支持。前置/后置脚本采用 Postman 风格的 pm.* API,包括 pm.test 断言、pm.environment、pm.globals 和 pm.variables,从 Postman 迁移脚本几乎不用改。" }
+      },
+      {
+        "@type": "Question",
+        "name": "能导入 Postman、ApiFox 或 cURL 的数据吗?",
+        "acceptedAnswer": { "@type": "Answer", "text": "可以。粘贴任意 cURL 命令即可还原请求;OpenAPI/Swagger 规范和 ApiFox 项目可整项目导入为集合。Postman 收藏集可先导出为 OpenAPI 再导入。" }
+      },
+      {
+        "@type": "Question",
+        "name": "我的数据存在哪里?安全吗?",
+        "acceptedAnswer": { "@type": "Answer", "text": "集合、环境、历史全部通过浏览器 IndexedDB 存在本地,不上传任何服务器。无统计埋点、无广告、无第三方脚本。" }
+      }
+    ]
+  }
+  </script>
+  <style>
+    :root {
+      --bg: #ffffff; --bg-subtle: #f6f8fa; --text: #0f172a; --text-muted: #475569;
+      --border: #e2e8f0; --brand: #00B894; --brand-dark: #00997e; --brand-soft: #d1fae5;
+      --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+      --mono: 'SF Mono', 'Menlo', 'Consolas', monospace;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #0f172a; --bg-subtle: #1e293b; --text: #e2e8f0; --text-muted: #94a3b8; --border: #334155; --brand: #2EE6C2; --brand-dark: #2cc9aa; --brand-soft: #134e4a; }
+    }
+    * { box-sizing: border-box; }
+    body { font-family: var(--sans); background: var(--bg); color: var(--text); line-height: 1.75; margin: 0; }
+    a { color: var(--brand-dark); }
+    .container { max-width: 880px; margin: 0 auto; padding: 0 24px; }
+    nav { display: flex; align-items: center; justify-content: space-between; padding: 18px 0; border-bottom: 1px solid var(--border); }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--text); text-decoration: none; }
+    .brand-mark { width: 28px; height: 28px; border-radius: 7px; background: var(--brand); display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 900; font-size: 16px; }
+    .nav-links { display: flex; gap: 18px; font-size: 14px; }
+    .nav-links a { color: var(--text-muted); text-decoration: none; }
+    .nav-links a:hover { color: var(--brand-dark); }
+    .crumb { font-size: 13px; color: var(--text-muted); padding: 16px 0 0; }
+    .hero { text-align: center; padding: 56px 0 32px; }
+    .hero h1 { font-size: 32px; letter-spacing: -0.02em; margin: 0 0 14px; }
+    .hero .tagline { font-size: 17px; color: var(--text-muted); max-width: 640px; margin: 0 auto; }
+    h2 { font-size: 23px; letter-spacing: -0.01em; margin: 48px 0 16px; }
+    table { border-collapse: collapse; width: 100%; margin: 16px 0 8px; font-size: 14.5px; }
+    th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { font-weight: 600; color: var(--text-muted); background: var(--bg-subtle); }
+    td:first-child { font-weight: 600; white-space: nowrap; }
+    .yes { color: var(--brand-dark); font-weight: 600; }
+    .cta-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin: 40px 0 8px; }
+    .btn { display: inline-flex; align-items: center; padding: 11px 22px; border-radius: 8px; font-weight: 600; font-size: 15px; text-decoration: none; border: 1px solid var(--border); color: var(--text); }
+    .btn:hover { border-color: var(--brand); }
+    .btn-primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+    .btn-primary:hover { background: var(--brand-dark); }
+    .faq h3 { font-size: 16px; margin: 22px 0 6px; }
+    .faq p { color: var(--text-muted); margin: 0 0 8px; }
+    ul { padding-left: 22px; }
+    li { margin: 6px 0; }
+    footer { margin-top: 64px; padding: 24px 0 48px; border-top: 1px solid var(--border); font-size: 13px; color: var(--text-muted); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+    footer a { color: var(--text-muted); }
+    code { font-family: var(--mono); background: var(--bg-subtle); padding: 2px 6px; border-radius: 4px; font-size: 0.92em; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav>
+      <a class="brand" href="./"><span class="brand-mark">P</span><span>Pico API</span></a>
+      <div class="nav-links">
+        <a href="./#features">Features</a>
+        <a href="sse-tester.html">SSE Tester</a>
+        <a href="curl-converter.html">cURL Converter</a>
+        <a href="how-to-test-rest-api-in-chrome.html">Guide</a>
+        <a href="postman-alternative.html">English</a>
+        <a href="https://github.com/fengliii123/pico-api">GitHub</a>
+      </div>
+    </nav>
+
+    <p class="crumb"><a href="./">Pico API</a> › Postman 替代品</p>
+
+    <header class="hero">
+      <h1>一个更轻的 Postman 替代品,就在 Chrome 里</h1>
+      <p class="tagline">
+        Postman 是个优秀的平台——为需要平台的团队而生。如果你只是想发个
+        请求、看看响应、继续干活,Pico API 在一个浏览器标签页里就能完成,
+        不用装桌面客户端,也不用注册账号。
+      </p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/nckjedkhineddehjkdlgaibfgpacmhcl">免费安装 Chrome 插件</a>
+        <a class="btn" href="./">查看全部功能</a>
+      </div>
+    </header>
+
+    <section>
+      <h2>Pico API 与 Postman 对比</h2>
+      <table>
+        <thead>
+          <tr><th></th><th>Pico API</th><th>Postman</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>运行方式</td><td class="yes">Chrome 标签页 / 插件</td><td>桌面客户端或网页版 + 登录</td></tr>
+          <tr><td>需要账号</td><td class="yes">不需要</td><td>需要</td></tr>
+          <tr><td>数据位置</td><td class="yes">本地浏览器(IndexedDB)</td><td>默认云同步</td></tr>
+          <tr><td>上手时间</td><td class="yes">商店一键安装即用</td><td>安装 + 注册 + 工作区</td></tr>
+          <tr><td>请求构造</td><td class="yes">全部方法、headers、params、认证</td><td>功能完整</td></tr>
+          <tr><td>Body 格式</td><td class="yes">JSON、XML、纯文本、urlencoded、form-data</td><td>功能完整</td></tr>
+          <tr><td>流式响应(SSE)实时渲染</td><td class="yes">内置,逐块显示</td><td>有限</td></tr>
+          <tr><td>脚本与测试</td><td class="yes">pm.* API(Postman 风格)</td><td>完整 JS 运行时</td></tr>
+          <tr><td>cURL 导入</td><td class="yes">粘贴即解析</td><td>导入向导</td></tr>
+          <tr><td>OpenAPI / ApiFox 导入</td><td class="yes">支持</td><td>OpenAPI 支持</td></tr>
+          <tr><td>团队协作</td><td>—</td><td>支持(付费档)</td></tr>
+          <tr><td>Mock 服务 / 监控</td><td>—</td><td>支持</td></tr>
+          <tr><td>价格</td><td class="yes">免费</td><td>免费档 + 付费套餐</td></tr>
+        </tbody>
+      </table>
+      <p style="color:var(--text-muted);font-size:13px">
+        对比基于 Postman 公开的免费档功能(截至 2026 年)。
+      </p>
+    </section>
+
+    <section>
+      <h2>从 Postman 或 ApiFox 迁移</h2>
+      <ul>
+        <li><strong>cURL 粘贴导入</strong>:任何 cURL 命令直接粘贴即还原为可编辑请求,也可以先用<a href="curl-converter.html">在线 cURL 转换工具</a>预览解析结果</li>
+        <li><strong>OpenAPI / Swagger</strong>:规范文件整包导入,自动生成树状集合</li>
+        <li><strong>ApiFox 项目</strong>:导出的项目文件可直接导入;Postman 收藏集可先导出为 OpenAPI 再导入</li>
+        <li><strong>脚本兼容</strong>:前置/后置脚本使用 Postman 风格的 <code>pm.*</code> API,<code>pm.test</code> 断言、环境变量读写写法一致,迁移成本低</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>什么情况选哪个</h2>
+      <ul>
+        <li><strong>选 Pico API</strong>:日常调自己或团队的接口、在意数据不上云、希望打开即用像开个标签页一样快。</li>
+        <li><strong>选 Postman</strong>:团队需要云端共享集合,或依赖 Mock 服务、监控、API 治理这类平台能力。</li>
+        <li><strong>两个都用</strong>:很多开发者的做法是——重型客户端留给团队协作,轻量的留给日常快速验证,Pico API 就是那个轻量的。</li>
+      </ul>
+    </section>
+
+    <section class="faq">
+      <h2>常见问题</h2>
+      <h3>Pico API 是免费的 Postman 替代品吗?</h3>
+      <p>是。Pico API 全功能免费——请求构造、环境变量、脚本测试、导入导出全部包含。没有账号、没有团队套餐,也不存在需要付费的云同步。</p>
+      <h3>支持 Postman 的脚本和断言吗?</h3>
+      <p>支持。前置/后置脚本采用 Postman 风格的 <code>pm.*</code> API,包括 <code>pm.test</code> 断言、<code>pm.environment</code>、<code>pm.globals</code> 和 <code>pm.variables</code>,从 Postman 迁移脚本几乎不用改。</p>
+      <h3>能导入 Postman、ApiFox 或 cURL 的数据吗?</h3>
+      <p>可以。粘贴任意 cURL 命令即可还原请求;OpenAPI/Swagger 规范和 ApiFox 项目可整项目导入为集合。Postman 收藏集可先导出为 OpenAPI 再导入。</p>
+      <h3>我的数据存在哪里?安全吗?</h3>
+      <p>集合、环境、历史全部通过浏览器 IndexedDB 存在本地,不上传任何服务器。无统计埋点、无广告、无第三方脚本,详见<a href="privacy.html">隐私政策</a>。</p>
+    </section>
+
+    <div class="cta-row">
+      <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/nckjedkhineddehjkdlgaibfgpacmhcl">免费试用 Pico API</a>
+      <a class="btn" href="https://github.com/fengliii123/pico-api">GitHub 加个 Star</a>
+    </div>
+
+    <footer>
+      <span>Pico API — Chrome 里的轻量 HTTP / REST 接口测试客户端。</span>
+      <span>
+        <a href="./">Home</a> ·
+        <a href="postman-alternative.html">English</a> ·
+        <a href="sse-tester.html">SSE Tester</a> ·
+        <a href="curl-converter.html">cURL Converter</a> ·
+        <a href="privacy.html">Privacy</a> ·
+        <a href="https://github.com/fengliii123/pico-api">GitHub</a>
+      </span>
+    </footer>
+  </div>
+</body>
+</html>

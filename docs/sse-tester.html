@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SSE Tester — Test Server-Sent Events Endpoints in the Browser</title>
+  <meta name="description" content="Paste an SSE endpoint URL and watch events stream in live, or run a simulated streaming response. Free browser-based SSE tester — nothing is uploaded, and no account is needed.">
+  <link rel="canonical" href="https://fengliii123.github.io/pico-api/sse-tester.html">
+  <link rel="icon" type="image/png" href="assets/icon-128.png">
+  <meta name="robots" content="index,follow">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Pico API">
+  <meta property="og:title" content="SSE Tester — Test Server-Sent Events Endpoints in the Browser">
+  <meta property="og:description" content="Watch server-sent events arrive chunk by chunk — connect to a real endpoint or run a simulation.">
+  <meta property="og:url" content="https://fengliii123.github.io/pico-api/sse-tester.html">
+  <meta property="og:image" content="https://fengliii123.github.io/pico-api/assets/hero-1280x800.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="SSE Tester — Test Server-Sent Events Endpoints in the Browser">
+  <meta name="twitter:description" content="Watch server-sent events arrive chunk by chunk — connect to a real endpoint or run a simulation.">
+  <meta name="twitter:image" content="https://fengliii123.github.io/pico-api/assets/hero-1280x800.png">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Pico API", "item": "https://fengliii123.github.io/pico-api/" },
+      { "@type": "ListItem", "position": 2, "name": "SSE Tester", "item": "https://fengliii123.github.io/pico-api/sse-tester.html" }
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "SSE Tester",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Any",
+    "url": "https://fengliii123.github.io/pico-api/sse-tester.html",
+    "description": "Test server-sent events endpoints in the browser — connect to a real SSE URL or run a simulated streaming response. Runs entirely client-side.",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+  }
+  </script>
+  <style>
+    :root {
+      --bg: #ffffff; --bg-subtle: #f6f8fa; --text: #0f172a; --text-muted: #475569;
+      --border: #e2e8f0; --brand: #00B894; --brand-dark: #00997e; --brand-soft: #d1fae5;
+      --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      --mono: 'SF Mono', 'Menlo', 'Consolas', monospace;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #0f172a; --bg-subtle: #1e293b; --text: #e2e8f0; --text-muted: #94a3b8; --border: #334155; --brand: #2EE6C2; --brand-dark: #2cc9aa; --brand-soft: #134e4a; }
+    }
+    * { box-sizing: border-box; }
+    body { font-family: var(--sans); background: var(--bg); color: var(--text); line-height: 1.65; margin: 0; }
+    a { color: var(--brand-dark); }
+    .container { max-width: 880px; margin: 0 auto; padding: 0 24px; }
+    nav { display: flex; align-items: center; justify-content: space-between; padding: 18px 0; border-bottom: 1px solid var(--border); }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--text); text-decoration: none; }
+    .brand-mark { width: 28px; height: 28px; border-radius: 7px; background: var(--brand); display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 900; font-size: 16px; }
+    .nav-links { display: flex; gap: 18px; font-size: 14px; }
+    .nav-links a { color: var(--text-muted); text-decoration: none; }
+    .nav-links a:hover { color: var(--brand-dark); }
+    .crumb { font-size: 13px; color: var(--text-muted); padding: 16px 0 0; }
+    .hero { text-align: center; padding: 48px 0 24px; }
+    .hero h1 { font-size: 32px; letter-spacing: -0.02em; margin: 0 0 12px; }
+    .hero .tagline { font-size: 17px; color: var(--text-muted); max-width: 640px; margin: 0 auto; }
+    h2 { font-size: 22px; letter-spacing: -0.01em; margin: 44px 0 14px; }
+    .tabs { display: flex; gap: 8px; margin: 24px 0 0; }
+    .tab { padding: 9px 16px; border: 1px solid var(--border); border-radius: 8px 8px 0 0; background: var(--bg-subtle); color: var(--text-muted); cursor: pointer; font: inherit; font-size: 14px; font-weight: 600; }
+    .tab.active { background: var(--bg); color: var(--text); border-bottom-color: var(--bg); }
+    .tool { border: 1px solid var(--border); border-radius: 0 8px 8px 8px; padding: 16px; }
+    .tool-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .btn { display: inline-flex; align-items: center; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 14px; text-decoration: none; border: 1px solid var(--border); color: var(--text); background: transparent; cursor: pointer; font-family: inherit; }
+    .btn:hover { border-color: var(--brand); }
+    .btn-primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+    .btn-primary:hover { background: var(--brand-dark); }
+    input[type="url"] {
+      flex: 1; min-width: 240px; padding: 10px 12px;
+      font-family: var(--mono); font-size: 13px;
+      border: 1px solid var(--border); border-radius: 8px;
+      background: var(--bg-subtle); color: var(--text);
+    }
+    input[type="url"]:focus { outline: 2px solid var(--brand); border-color: transparent; }
+    .meta-row { display: flex; gap: 16px; font-size: 12.5px; color: var(--text-muted); margin: 12px 0 8px; font-family: var(--mono); flex-wrap: wrap; }
+    .stream-box {
+      font-family: var(--mono); font-size: 13px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere;
+      background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 8px;
+      padding: 14px; min-height: 120px; max-height: 320px; overflow-y: auto; margin: 0;
+    }
+    .status { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--text-muted); }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); }
+    .dot.live { background: var(--brand); animation: pulse 1.1s ease-in-out infinite; }
+    .dot.err { background: #e5484d; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+    .err { color: #e5484d; font-size: 14px; margin-top: 10px; }
+    .hint { font-size: 13px; color: var(--text-muted); margin-top: 8px; }
+    code { font-family: var(--mono); background: var(--bg-subtle); padding: 2px 6px; border-radius: 4px; font-size: 0.92em; }
+    ul { padding-left: 22px; } li { margin: 6px 0; }
+    .faq h3 { font-size: 16px; margin: 22px 0 6px; }
+    .faq p { color: var(--text-muted); margin: 0 0 8px; }
+    .cta-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin: 40px 0 8px; }
+    footer { margin-top: 64px; padding: 24px 0 48px; border-top: 1px solid var(--border); font-size: 13px; color: var(--text-muted); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+    footer a { color: var(--text-muted); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav>
+      <a class="brand" href="./"><span class="brand-mark">P</span><span>Pico API</span></a>
+      <div class="nav-links">
+        <a href="./#features">Features</a>
+        <a href="postman-alternative.html">Postman Alternative</a>
+        <a href="curl-converter.html">cURL Converter</a>
+        <a href="how-to-test-rest-api-in-chrome.html">Guide</a>
+        <a href="https://github.com/fengliii123/pico-api">GitHub</a>
+      </div>
+    </nav>
+
+    <p class="crumb"><a href="./">Pico API</a> › SSE Tester</p>
+
+    <header class="hero">
+      <h1>SSE Tester</h1>
+      <p class="tagline">
+        Test server-sent events right in your browser. Connect to a real SSE
+        endpoint and watch events arrive live — or run a simulation to see how
+        streaming responses render. Everything runs client-side; nothing is
+        uploaded anywhere.
+      </p>
+    </header>
+
+    <main>
+      <div class="tabs" role="tablist">
+        <button class="tab active" id="tabSim" type="button" role="tab" aria-selected="true">Simulate a stream</button>
+        <button class="tab" id="tabConn" type="button" role="tab" aria-selected="false">Connect to an endpoint</button>
+      </div>
+
+      <div class="tool">
+        <div id="panelSim">
+          <div class="tool-actions">
+            <button class="btn btn-primary" id="simStartBtn" type="button">Start stream</button>
+            <button class="btn" id="simStopBtn" type="button" disabled>Stop</button>
+            <span class="status"><span class="dot" id="simDot"></span><span id="simStatus">idle</span></span>
+          </div>
+          <div class="meta-row"><span id="simElapsed">0.0 s</span><span id="simChunks">0 chunks</span></div>
+          <pre class="stream-box" id="simStream"></pre>
+          <p class="hint">A simulated token-by-token stream — the same chunk-by-chunk rendering Pico API shows for real responses.</p>
+        </div>
+
+        <div id="panelConn" hidden>
+          <div class="tool-actions">
+            <input type="url" id="sseUrl" spellcheck="false" placeholder="https://your-endpoint.example/stream — must allow CORS" aria-label="SSE endpoint URL">
+            <button class="btn btn-primary" id="connBtn" type="button">Connect</button>
+            <button class="btn" id="discBtn" type="button" disabled>Disconnect</button>
+          </div>
+          <div class="tool-actions" style="margin-top:8px">
+            <button class="btn" id="sampleBtn" type="button">Load public feed (Wikimedia)</button>
+          </div>
+          <div class="meta-row"><span class="status"><span class="dot" id="connDot"></span><span id="connStatus">idle</span></span><span id="connChunks">0 events</span></div>
+          <pre class="stream-box" id="connStream"></pre>
+          <p class="hint">Uses the native <code>EventSource</code> API, so the endpoint must allow cross-origin requests — your own dev endpoints often do. Public feeds may be blocked on some networks.</p>
+          <p class="err" id="connErr" hidden></p>
+        </div>
+      </div>
+    </main>
+
+    <section>
+      <h2>What you're watching</h2>
+      <p>
+        Each token or event appears the moment it arrives — nothing waits for
+        the response to finish. A status dot shows the connection state, a
+        counter tracks elapsed time and chunk count, and a Stop button aborts
+        mid-stream. This mirrors how <a href="./">Pico API</a>'s response panel
+        renders streaming bodies: chunk-by-chunk accumulation, per-chunk
+        timing, auto-scroll, and abort while streaming.
+      </p>
+    </section>
+
+    <section>
+      <h2>Why test SSE in a browser</h2>
+      <ul>
+        <li>Verify an endpoint actually streams — and see the real event format and timing, not a curled dump</li>
+        <li>Debug LLM token streams (<code>text/event-stream</code>) without writing a scratch script</li>
+        <li>Check reconnect behavior: what the browser does when the connection drops</li>
+        <li>Confirm event payloads while your backend team is still iterating on them</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>What Pico API adds over this page</h2>
+      <p>This page is limited by the browser's <code>EventSource</code> API — it cannot send <code>Authorization</code> headers, and it only reaches endpoints that send permissive CORS headers. The Pico API extension is not:</p>
+      <ul>
+        <li>Requests go through the extension's service worker, so <strong>CORS won't block you</strong> and auth headers (Bearer, API key, cookies) work normally</li>
+        <li>Streams <strong>any chunked response</strong>, not just <code>text/event-stream</code> — NDJSON, LLM completions, plain chunked HTML</li>
+        <li>Full response stats: status, timing, size, headers — and the request can be saved into a collection next to your other endpoints</li>
+      </ul>
+    </section>
+
+    <section class="faq">
+      <h2>FAQ</h2>
+      <h3>Why does Connect fail for my endpoint?</h3>
+      <p><code>EventSource</code> cannot send <code>Authorization</code> headers and requires the endpoint to allow cross-origin requests. Most real APIs fail one of these checks — that's exactly what the Pico API extension works around via its service worker.</p>
+      <h3>Can I test an OpenAI-style streaming API here?</h3>
+      <p>Usually not from this page: those endpoints require an auth header, which <code>EventSource</code> can't send. Pico API sends them like any other request and renders the token stream live.</p>
+      <h3>Is my endpoint URL or data uploaded anywhere?</h3>
+      <p>No. This page is plain static HTML; the connection is made by your browser directly to the endpoint you paste. There are no analytics and no backend.</p>
+    </section>
+
+    <div class="cta-row">
+      <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/nckjedkhineddehjkdlgaibfgpacmhcl">Test real endpoints with Pico API — Free</a>
+      <a class="btn" href="postman-alternative.html">vs Postman</a>
+    </div>
+
+    <footer>
+      <span>Pico API — a lightweight HTTP &amp; REST client for Chrome.</span>
+      <span>
+        <a href="./">Home</a> ·
+        <a href="postman-alternative.html">Postman Alternative</a> ·
+        <a href="curl-converter.html">cURL Converter</a> ·
+        <a href="how-to-test-rest-api-in-chrome.html">Guide</a> ·
+        <a href="privacy.html">Privacy</a> ·
+        <a href="https://github.com/fengliii123/pico-api">GitHub</a>
+      </span>
+    </footer>
+  </div>
+
+  <script>
+    // Pure client-side: a simulated chunk stream, and a native EventSource
+    // client — mirroring how Pico API renders streaming responses.
+
+    function $(id) { return document.getElementById(id) }
+    function fmt(n) { return n.toFixed(1) + ' s' }
+
+    // ---- Tab switching ----
+    var tabSim = $('tabSim'), tabConn = $('tabConn')
+    function selectTab(simActive) {
+      tabSim.classList.toggle('active', simActive)
+      tabConn.classList.toggle('active', !simActive)
+      tabSim.setAttribute('aria-selected', simActive)
+      tabConn.setAttribute('aria-selected', !simActive)
+      $('panelSim').hidden = !simActive
+      $('panelConn').hidden = simActive
+    }
+    tabSim.addEventListener('click', function () { selectTab(true) })
+    tabConn.addEventListener('click', function () { selectTab(false) })
+
+    // ---- Simulate mode ----
+    var TOKENS = ('Server-sent events deliver a response as a sequence of chunks. ' +
+      'Pico API renders each chunk the moment it arrives, so you watch the body ' +
+      'build up instead of waiting for the request to finish. Streaming works for ' +
+      'SSE endpoints, LLM token streams, and any chunked response — with live ' +
+      'timing, a chunk counter, and a Stop button that aborts mid-stream. [DONE]').split(' ')
+
+    var simTimer = null, simTicker = null, simStart = 0, simCount = 0
+
+    function simAppend(text) {
+      var box = $('simStream')
+      box.appendChild(document.createTextNode(text))
+      box.scrollTop = box.scrollHeight
+    }
+
+    function simReset() {
+      clearTimeout(simTimer); clearInterval(simTicker)
+      simTimer = null; simTicker = null
+      $('simDot').className = 'dot'
+      $('simStatus').textContent = 'idle'
+      $('simStartBtn').disabled = false
+      $('simStopBtn').disabled = true
+    }
+
+    function simRun() {
+      simReset()
+      $('simStream').textContent = ''
+      simCount = 0; simStart = performance.now()
+      $('simDot').className = 'dot live'
+      $('simStatus').textContent = 'streaming'
+      $('simStartBtn').disabled = true
+      $('simStopBtn').disabled = false
+      simTicker = setInterval(function () {
+        $('simElapsed').textContent = fmt((performance.now() - simStart) / 1000)
+      }, 100)
+      var i = 0
+      function next() {
+        if (i >= TOKENS.length) { finish(); return }
+        simAppend((i === 0 ? '' : ' ') + TOKENS[i++])
+        simCount++
+        $('simChunks').textContent = simCount + (simCount === 1 ? ' chunk' : ' chunks')
+        simTimer = setTimeout(next, 30 + Math.random() * 70)
+      }
+      next()
+      function finish() {
+        simReset()
+        $('simStatus').textContent = 'done'
+        $('simElapsed').textContent = fmt((performance.now() - simStart) / 1000)
+      }
+    }
+
+    $('simStartBtn').addEventListener('click', simRun)
+    $('simStopBtn').addEventListener('click', function () {
+      simReset()
+      $('simStatus').textContent = 'aborted at ' + fmt((performance.now() - simStart) / 1000)
+    })
+
+    // ---- Connect mode (native EventSource) ----
+    var es = null, connCount = 0
+
+    function connFinish(statusText, dotClass) {
+      if (es) { es.close(); es = null }
+      $('connBtn').disabled = false
+      $('discBtn').disabled = true
+      $('connDot').className = 'dot' + (dotClass ? ' ' + dotClass : '')
+      $('connStatus').textContent = statusText
+    }
+
+    function connAppend(text) {
+      var box = $('connStream')
+      box.appendChild(document.createTextNode(text + '\n\n'))
+      box.scrollTop = box.scrollHeight
+    }
+
+    $('connBtn').addEventListener('click', function () {
+      var url = $('sseUrl').value.trim()
+      if (!url) {
+        $('connErr').textContent = 'Enter an SSE endpoint URL first — or load the public feed below.'
+        $('connErr').hidden = false
+        return
+      }
+      $('connErr').hidden = true
+      $('connStream').textContent = ''
+      connCount = 0
+      $('connChunks').textContent = '0 events'
+      $('connDot').className = 'dot live'
+      $('connStatus').textContent = 'connecting'
+      $('connBtn').disabled = true
+      $('discBtn').disabled = false
+      try {
+        es = new EventSource(url)
+      } catch (e) {
+        $('connErr').textContent = e.message || 'Invalid URL.'
+        $('connErr').hidden = false
+        connFinish('error', 'err')
+        return
+      }
+      es.onopen = function () { $('connStatus').textContent = 'connected' }
+      es.onmessage = function (ev) {
+        connCount++
+        $('connChunks').textContent = connCount + (connCount === 1 ? ' event' : ' events')
+        var body = ev.data.length > 800 ? ev.data.slice(0, 800) + '…' : ev.data
+        connAppend(body)
+      }
+      es.onerror = function () {
+        if (!es) return
+        if (es.readyState === EventSource.CLOSED) {
+          $('connErr').textContent = 'Connection failed. The endpoint may not allow cross-origin requests (CORS) or may not be an SSE endpoint. Endpoints requiring auth headers cannot be tested here — Pico API can send them.'
+          $('connErr').hidden = false
+          connFinish('disconnected', 'err')
+        } else {
+          // readyState CONNECTING = EventSource auto-reconnect (stream ended or network hiccup)
+          $('connStatus').textContent = 'reconnecting'
+        }
+      }
+    })
+
+    $('discBtn').addEventListener('click', function () { connFinish('disconnected') })
+
+    $('sampleBtn').addEventListener('click', function () {
+      $('sseUrl').value = 'https://stream.wikimedia.org/v2/stream/recentchange'
+      $('connErr').hidden = true
+    })
+  </script>
+</body>
+</html>

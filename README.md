@@ -6,9 +6,7 @@ A lightweight HTTP client and REST API testing tool for Chrome. Send requests,
 debug APIs, and watch streaming responses live — without leaving your browser
 or creating an account.
 
-<!-- Replace with the real Chrome Web Store badge/link once published:
-[![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-Install-34A853)](https://chromewebstore.google.com/detail/XXX)
--->
+[![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-Install-34A853)](https://chromewebstore.google.com/detail/nckjedkhineddehjkdlgaibfgpacmhcl)
 
 ![Pico API screenshot: streaming response with live chunks](docs/assets/hero-1280x800.png)
 
@@ -39,8 +37,7 @@ or creating an account.
 
 **From the Chrome Web Store** (recommended):
 
-<!-- Replace with the real listing URL once published. -->
-Search for "Pico API" in the [Chrome Web Store](https://chromewebstore.google.com).
+[Install Pico API for Chrome](https://chromewebstore.google.com/detail/nckjedkhineddehjkdlgaibfgpacmhcl) — search for "Pico API" in the [Chrome Web Store](https://chromewebstore.google.com) if you prefer.
 
 **From source**:
 

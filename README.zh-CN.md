@@ -5,9 +5,7 @@
 一个轻量级的 Chrome HTTP 客户端与 REST API 测试工具。发送请求、调试 API、
 实时查看流式响应——无需离开浏览器，也无需注册账号。
 
-<!-- 上架后请替换为真实的 Chrome Web Store 徽章/链接：
-[![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-安装-34A853)](https://chromewebstore.google.com/detail/XXX)
--->
+[![Chrome Web Store](https://img.shields.io/badge/Chrome%20Web%20Store-安装-34A853)](https://chromewebstore.google.com/detail/nckjedkhineddehjkdlgaibfgpacmhcl)
 
 ![Pico API 截图：流式响应实时渲染](docs/assets/hero-1280x800.png)
 
@@ -38,8 +36,7 @@
 
 **从 Chrome Web Store 安装**（推荐）：
 
-<!-- 上架后请替换为真实的商店链接。 -->
-在 [Chrome Web Store](https://chromewebstore.google.com) 搜索 "Pico API"。
+[点此安装 Pico API](https://chromewebstore.google.com/detail/nckjedkhineddehjkdlgaibfgpacmhcl)——也可以在 [Chrome Web Store](https://chromewebstore.google.com) 搜索 "Pico API"。
 
 **从源码加载**：
 
