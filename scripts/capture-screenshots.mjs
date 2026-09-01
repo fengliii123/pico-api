@@ -4,6 +4,10 @@
 // opens the options page, drives the UI through a few representative
 // states, and saves 1280×800 PNGs to store/screenshots/.
 //
+// All request targets are served by a local HTTP server started by this
+// script — no external APIs (jsonplaceholder/github 403 or get blocked on
+// some networks, which used to break the screenshots).
+//
 // Usage:
 //   npm run build
 //   node scripts/capture-screenshots.mjs
@@ -15,6 +19,7 @@
 //   4-pretty-view.png
 
 import { chromium } from 'playwright'
+import http from 'node:http'
 import path from 'node:path'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -26,19 +31,64 @@ const PROJECT_ROOT = path.resolve(__dirname, '..')
 const DIST_DIR = path.resolve(PROJECT_ROOT, 'dist')
 const OUT_DIR = path.resolve(PROJECT_ROOT, 'store', 'screenshots')
 
-const CHROME_BUNDLE =
-  process.env.PLAYWRIGHT_CHROMIUM_PATH ||
-  '/Users/fengli/Library/Caches/ms-playwright/chromium-1228/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing'
+// Prefer PLAYWRIGHT_CHROMIUM_PATH; otherwise use the newest playwright
+// chromium build in the shared cache (the exact build number changes
+// with every playwright update, so hardcoding one path breaks).
+function findChrome() {
+  if (process.env.PLAYWRIGHT_CHROMIUM_PATH && fs.existsSync(process.env.PLAYWRIGHT_CHROMIUM_PATH)) {
+    return process.env.PLAYWRIGHT_CHROMIUM_PATH
+  }
+  const cacheDir = path.join(os.homedir(), 'Library', 'Caches', 'ms-playwright')
+  if (!fs.existsSync(cacheDir)) return null
+  const versions = fs.readdirSync(cacheDir).filter(d => /^chromium-\d+$/.test(d)).sort().reverse()
+  for (const v of versions) {
+    for (const dir of ['chrome-mac-arm64', 'chrome-mac']) {
+      const bin = path.join(cacheDir, v, dir, 'Google Chrome for Testing.app', 'Contents', 'MacOS', 'Google Chrome for Testing')
+      if (fs.existsSync(bin)) return bin
+    }
+  }
+  return null
+}
+
+const CHROME_BUNDLE = findChrome()
 
 if (!fs.existsSync(DIST_DIR)) {
   console.error(`dist/ not found at ${DIST_DIR}. Run \`npm run build\` first.`)
   process.exit(1)
 }
-if (!fs.existsSync(CHROME_BUNDLE)) {
-  console.error(`Chrome binary not found at ${CHROME_BUNDLE}.`)
+if (!CHROME_BUNDLE) {
+  console.error('No playwright chromium binary found. Set PLAYWRIGHT_CHROMIUM_PATH or run `npx playwright install chromium`.')
   process.exit(1)
 }
 fs.mkdirSync(OUT_DIR, { recursive: true })
+
+// ----- local JSON server (deterministic, offline-safe data source) -----
+const USER_JSON = {
+  id: 1, name: 'Leanne Graham', username: 'Bret',
+  email: 'leanne.graham@pico.dev', phone: '1-770-736-8031 x56442', website: 'pico.dev',
+  address: { street: 'Kulas Light', suite: 'Apt. 556', city: 'Gwenborough', zipcode: '92998', geo: { lat: '-37.3159', lng: '81.1496' } },
+  company: { name: 'Pico Labs', catchPhrase: 'The smallest meaningful unit of a REST client', bs: 'http client' }
+}
+const REPO_JSON = {
+  id: 42, name: 'core', full_name: 'vuejs/core', private: false,
+  description: 'The progressive JavaScript framework for building user interfaces',
+  stargazers_count: 48213, forks_count: 8412, open_issues_count: 617,
+  language: 'TypeScript', license: { key: 'mit', name: 'MIT License' },
+  created_at: '2026-01-01T00:00:00Z', updated_at: '2026-09-01T00:00:00Z',
+  topics: ['vue', 'typescript', 'frontend', 'reactivity'],
+  owner: { login: 'vuejs', avatar_url: 'https://pico.dev/avatar.png' }
+}
+
+const localServer = http.createServer((req, res) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8')
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  if (req.url.startsWith('/users')) res.end(JSON.stringify(USER_JSON))
+  else if (req.url.startsWith('/repos')) res.end(JSON.stringify(REPO_JSON))
+  else { res.statusCode = 404; res.end(JSON.stringify({ message: 'not found' })) }
+})
+await new Promise(resolve => localServer.listen(0, '127.0.0.1', resolve))
+const LOCAL_PORT = localServer.address().port
+console.log(`local JSON server on http://127.0.0.1:${LOCAL_PORT}`)
 
 // ----- launch Chrome with the extension loaded -----
 const userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pico-shots-'))
@@ -105,11 +155,9 @@ try {
   // =========================================================
   // Shot 1 — main view, send a real request, response in tree mode
   // =========================================================
-  // Type a real public API endpoint that returns rich JSON.
-  // jsonplaceholder is rate-limit-free and stable — GitHub's API 403s
-  // anonymous calls, which produced an error-response screenshot.
+  // Hit the local JSON server started above — deterministic and offline.
   const urlInput = page.locator('input[placeholder*="api.example.com"]').first()
-  await urlInput.fill('https://jsonplaceholder.typicode.com/users/1')
+  await urlInput.fill(`http://127.0.0.1:${LOCAL_PORT}/users/1`)
   // Find the Send button — it's the primary button at the end of the toolbar.
   // The URL bar input is wrapped in a flex row with the Send button.
   // Click by visible text to be resilient to DOM changes.
@@ -174,7 +222,7 @@ try {
   // =========================================================
   // Re-send the request so response panel is populated.
   try {
-    await urlInput.fill('https://api.github.com/repos/vuejs/core')
+    await urlInput.fill(`http://127.0.0.1:${LOCAL_PORT}/repos/vuejs/core`)
     await page.getByRole('button', { name: /send/i }).first().click()
     await page.waitForTimeout(2500)
     // Switch to Pretty view.
@@ -191,5 +239,6 @@ try {
   console.log('\nAll screenshots captured to store/screenshots/')
 } finally {
   await context.close()
+  localServer.close()
   try { fs.rmSync(userDataDir, { recursive: true, force: true }) } catch { /* ignore */ }
 }
