@@ -12,7 +12,8 @@ import { Tree, Modal, Input, Button, message, Dropdown, Menu } from 'ant-design-
 import {
   FolderOutlined,
   FolderAddOutlined,
-  FileAddOutlined
+  FileAddOutlined,
+  SearchOutlined
 } from '@ant-design/icons-vue'
 import { useCollectionStore, MAX_DEPTH } from '@/stores/collection'
 import { useRequestStore } from '@/stores/request'
@@ -25,6 +26,8 @@ import { methodColor } from '@/utils/methodColors'
 import TreeContextMenu from './TreeContextMenu.vue'
 import {
   buildTree,
+  collectFolderKeys,
+  filterTree,
   folderIdFromKey,
   isFolderKey,
   isRequestKey,
@@ -42,6 +45,13 @@ const envStore = useEnvironmentStore()
 const treeData = computed(() =>
   buildTree(collStore.folderList, collStore.requestList)
 )
+
+// Filter box: narrows the tree to folders/requests matching name or URL.
+// While a query is active every folder in the filtered tree is expanded so
+// matches are visible regardless of the user's manual expansion state.
+const searchQuery = ref('')
+const searching = computed(() => searchQuery.value.trim() !== '')
+const displayTree = computed(() => filterTree(treeData.value, searchQuery.value))
 
 // Track which folder nodes are expanded. The Tree component is uncontrolled
 // by default — meaning a newly-created child folder is hidden until the user
@@ -80,6 +90,9 @@ watch(
 )
 
 const expandedKeysArr = computed(() => [...expandedKeys.value])
+const effectiveExpandedKeys = computed(() =>
+  searching.value ? collectFolderKeys(displayTree.value) : expandedKeysArr.value
+)
 
 // AntD 4.x doesn't pass the AntTreeNode as `data`; we receive it as the
 // first arg. To distinguish folder nodes from request nodes we look at
@@ -633,15 +646,26 @@ async function onAntdDrop(info: any) {
       </Button>
     </div>
 
+    <div class="tree-search">
+      <Input
+        v-model:value="searchQuery"
+        size="small"
+        :placeholder="t.filterFolders"
+        allow-clear
+      >
+        <template #prefix><SearchOutlined class="tree-search-icon" /></template>
+      </Input>
+    </div>
+
     <div class="tree-scroll" @contextmenu="onContainerContextMenu">
       <Tree
-        v-if="treeData.length"
-        :tree-data="treeData"
+        v-if="displayTree.length"
+        :tree-data="displayTree"
         block-node
         :selectable="true"
         :draggable="true"
         :allow-drop="allowDrop"
-        :expanded-keys="expandedKeysArr"
+        :expanded-keys="effectiveExpandedKeys"
         @expand="onExpand"
         @select="onSelect"
         @right-click="onTreeRightClick"
@@ -651,6 +675,9 @@ async function onAntdDrop(info: any) {
           <component :is="titleRender(slotProps)" />
         </template>
       </Tree>
+      <div v-else-if="searching" class="tree-search-empty">
+        {{ t.noResultsFound }}
+      </div>
       <div v-else class="tree-empty">
         <div class="tree-empty-icon"><FolderOutlined /></div>
         <p class="tree-empty-title">{{ t.noFoldersYet }}</p>
@@ -705,6 +732,21 @@ async function onAntdDrop(info: any) {
   flex: 0 0 auto;
   display: flex;
   gap: var(--space-2);
+}
+.tree-search {
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--border-base);
+  background: var(--bg-base);
+  flex: 0 0 auto;
+}
+.tree-search-icon {
+  color: var(--text-tertiary);
+}
+.tree-search-empty {
+  text-align: center;
+  padding: var(--space-6) var(--space-4);
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
 }
 .tree-scroll {
   flex: 1;

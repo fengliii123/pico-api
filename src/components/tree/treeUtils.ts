@@ -84,6 +84,50 @@ export function buildTree(folders: Folder[], requests: SavedRequest[]): AntTreeN
   return build(null, 1)
 }
 
+// Filter the tree by a case-insensitive substring against folder names,
+// request names, and request URLs. A folder survives when it matches by
+// name (keeping its whole subtree) or when any descendant survives;
+// ancestors of surviving nodes are always kept so matches stay navigable.
+export function filterTree(nodes: AntTreeNode[], query: string): AntTreeNode[] {
+  const q = query.trim().toLowerCase()
+  if (!q) return nodes
+
+  function walk(list: AntTreeNode[]): AntTreeNode[] {
+    const out: AntTreeNode[] = []
+    for (const n of list) {
+      if (n.isLeaf) {
+        const r = n.node.kind === 'request' ? n.node.request : null
+        const name = (r?.name ?? n.title).toLowerCase()
+        const url = (r?.url ?? '').toLowerCase()
+        if (name.includes(q) || url.includes(q)) out.push(n)
+      } else {
+        if (n.title.toLowerCase().includes(q)) {
+          out.push(n)
+        } else {
+          const children = n.children ? walk(n.children) : []
+          if (children.length) out.push({ ...n, children })
+        }
+      }
+    }
+    return out
+  }
+
+  return walk(nodes)
+}
+
+// All folder keys in a tree — used to auto-expand every folder while a
+// search filter is active.
+export function collectFolderKeys(nodes: AntTreeNode[]): string[] {
+  const keys: string[] = []
+  for (const n of nodes) {
+    if (!n.isLeaf) {
+      keys.push(n.key)
+      if (n.children) keys.push(...collectFolderKeys(n.children))
+    }
+  }
+  return keys
+}
+
 export function isFolderKey(key: string): boolean {
   return key.startsWith('folder:')
 }
