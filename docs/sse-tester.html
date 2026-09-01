@@ -152,12 +152,9 @@
             <button class="btn btn-primary" id="connBtn" type="button">Connect</button>
             <button class="btn" id="discBtn" type="button" disabled>Disconnect</button>
           </div>
-          <div class="tool-actions" style="margin-top:8px">
-            <button class="btn" id="sampleBtn" type="button">Load public feed (Wikimedia)</button>
-          </div>
           <div class="meta-row"><span class="status"><span class="dot" id="connDot"></span><span id="connStatus">idle</span></span><span id="connChunks">0 events</span></div>
           <pre class="stream-box" id="connStream"></pre>
-          <p class="hint">Leave the URL empty and press <strong>Connect</strong> for a built-in demo stream — generated locally by a service worker, works offline. Or paste any SSE endpoint; it must allow cross-origin requests. Public feeds may be blocked on some networks.</p>
+          <p class="hint">Leave the URL empty and press <strong>Connect</strong> for a built-in demo stream — generated locally by a service worker, works offline. Or paste an SSE endpoint you're developing against; it must allow cross-origin requests (CORS).</p>
           <p class="err" id="connErr" hidden></p>
         </div>
       </div>
@@ -322,7 +319,7 @@
       var demo = false
       if (!url) {
         if (!('serviceWorker' in navigator)) {
-          $('connErr').textContent = 'Enter an SSE endpoint URL first — or load the public feed below.'
+          $('connErr').textContent = 'Enter an SSE endpoint URL first.'
           $('connErr').hidden = false
           return
         }
@@ -367,11 +364,6 @@
     })
 
     $('discBtn').addEventListener('click', function () { connFinish('disconnected') })
-
-    $('sampleBtn').addEventListener('click', function () {
-      $('sseUrl').value = 'https://stream.wikimedia.org/v2/stream/recentchange'
-      $('connErr').hidden = true
-    })
 
     // The built-in demo stream (empty URL → ./demo-stream) is synthesized by
     // this service worker; registration is best-effort, the tester degrades
