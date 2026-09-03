@@ -21,8 +21,10 @@ import { useRequestStore } from '@/stores/request'
 import { useEnvironmentStore } from '@/stores/environment'
 import { useKeyboardShortcuts, registerShortcut } from '@/composables/useKeyboardShortcuts'
 import { useI18n } from '@/i18n/useI18n'
+import { getTranslation, type Locale } from '@/i18n'
+import { computeSeedRename, type SeedNames } from '@/core/seed'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const collStore = useCollectionStore()
 const reqStore = useRequestStore()
@@ -35,6 +37,7 @@ onMounted(async () => {
   await Promise.all([collStore.load(), envStore.load()])
   reqStore.newRequest(null)
   void seedExamplesIfFirstRun()
+  void syncSeedLocale()
 
   // Register global shortcuts
   registerShortcut({
@@ -91,10 +94,49 @@ async function seedExamplesIfFirstRun() {
       params: [],
       body: { mode: 'raw', rawType: 'json', rawText: '{\n  "hello": "pico"\n}' }
     })
-    try { localStorage.setItem('mp2:seededExamples', '1') } catch { /* ignore */ }
+    try {
+      localStorage.setItem('mp2:seededExamples', '1')
+      localStorage.setItem('mp2:seededLocale', locale.value)
+    } catch { /* ignore */ }
   } catch {
     // Seeding is best-effort — a failure must never block app usage.
   }
+}
+
+function seedNamesFor(l: string): SeedNames {
+  const tr = getTranslation(l === 'zh-CN' ? 'zh-CN' : 'en')
+  return { folder: tr.examplesFolderName, get: tr.exampleGetUser, post: tr.examplePostEcho }
+}
+
+// The seed is created in the UI locale at first run. If the user switches
+// the app language later and never touched the seed, rename it to follow
+// the new locale; anything user-modified is left exactly as-is.
+async function syncSeedLocale() {
+  let seededLocale: string | null = null
+  try { seededLocale = localStorage.getItem('mp2:seededLocale') } catch { return }
+  if (!seededLocale || seededLocale === locale.value) return
+
+  const plan = computeSeedRename(
+    collStore.folderList,
+    collStore.requestList,
+    seedNamesFor(seededLocale),
+    seedNamesFor(locale.value)
+  )
+  if (plan) {
+    try {
+      await collStore.renameFolder(plan.folderId, plan.folderName)
+      for (const rename of plan.requestRenames) {
+        const saved = collStore.requestsById.get(rename.id)
+        if (saved) {
+          saved.name = rename.name
+          await collStore.updateRequest(saved)
+        }
+      }
+    } catch {
+      // Best-effort — a failed rename never blocks the app.
+    }
+  }
+  try { localStorage.setItem('mp2:seededLocale', locale.value) } catch { /* ignore */ }
 }
 
 const importOpen = ref(false)

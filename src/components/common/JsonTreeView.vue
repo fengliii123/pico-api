@@ -190,7 +190,7 @@ function collapseToDepth(maxDepth: number) {
     <div class="json-tree-toolbar">
       <Input
         v-model:value="searchQuery"
-        placeholder="Search keys or values..."
+        :placeholder="t.jsonSearchPlaceholder"
         size="small"
         allow-clear
         style="width: 200px"
@@ -202,11 +202,11 @@ function collapseToDepth(maxDepth: number) {
       <div class="toolbar-actions">
         <Button size="small" @click="expandAll">
           <template #icon><ExpandOutlined /></template>
-          Expand
+          {{ t.expandAllBtn }}
         </Button>
         <Button size="small" @click="collapseAll">
           <template #icon><ShrinkOutlined /></template>
-          Collapse
+          {{ t.collapseAllBtn }}
         </Button>
       </div>
     </div>
