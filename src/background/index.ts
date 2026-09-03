@@ -65,6 +65,9 @@ const c = (globalThis as any).chrome as
         onConnect: {
           addListener: (cb: (port: any) => void) => void
         }
+        onInstalled: {
+          addListener: (cb: (details: { reason: string }) => void) => void
+        }
         openOptionsPage: () => void
       }
       action: { onClicked: { addListener: (cb: (tab: any) => void) => void } }
@@ -335,6 +338,13 @@ if (c) {
   // Clicking the extension icon opens the options page in a new tab.
   c.action.onClicked.addListener(() => {
     c.runtime.openOptionsPage()
+  })
+
+  // First install: open the app right away. Without this the extension
+  // installs silently and many users never find the icon — a top driver of
+  // early uninstalls. Updates stay silent on purpose.
+  c.runtime.onInstalled.addListener((details: { reason: string }) => {
+    if (details.reason === 'install') c.runtime.openOptionsPage()
   })
 }
 
