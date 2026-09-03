@@ -60,6 +60,7 @@ export interface PmApi {
   }
   test: (name: string, fn: () => void | Promise<void>) => void
   expect: (actual: any) => Assertion
+  sendRequest: (url: string, callback: (error: any, response: SendRequestResponse | null) => void) => void
   // Internal: collected test results
   _tests: TestResult[]
   // Internal: variable changes made by the script via pm.environment /
@@ -151,6 +152,32 @@ export interface ScriptRunContext {
   response: ResponseResult | null
   envVars: EnvironmentVariable[]
   globals: EnvironmentVariable[]
+  // Injected by the host so pm.sendRequest can perform a real GET. Absent
+  // in bare test contexts — pm.sendRequest then reports an error callback.
+  sendRequest?: SendRequestExecutor
+}
+
+export interface SendRequestResult {
+  status: number
+  statusText: string
+  headers: Record<string, string>
+  bodyText: string
+  time: number
+  size: number
+}
+
+export type SendRequestExecutor = (url: string) => Promise<SendRequestResult>
+
+/** Postman-shaped response object handed to pm.sendRequest callbacks. */
+export interface SendRequestResponse {
+  code: number
+  status: number
+  statusText: string
+  headers(): Record<string, string>
+  json(): any
+  text(): string
+  responseTime: number
+  size(): { body: number; header: number; total: number }
 }
 
 export interface ScriptRunResult {
@@ -199,7 +226,8 @@ export function createPmApi(
   requestBody: string | undefined,
   response: ResponseResult | null,
   envVars: EnvironmentVariable[],
-  globals: EnvironmentVariable[]
+  globals: EnvironmentVariable[],
+  sendRequestExecutor?: SendRequestExecutor
 ): PmApi {
   const envTracked = createTrackedVars(envVars, 'environment')
   const globalsTracked = createTrackedVars(globals, 'globals')
@@ -289,16 +317,22 @@ export function createPmApi(
         pendingChanges.push(...envTracked.changes.splice(0))
       }
     },
+    // Postman's collectionVariables have no direct equivalent here (no
+    // collection-scope storage) — they alias GLOBALS, the broadest scope
+    // this client has. Writes record as scope 'globals'.
     collectionVariables: {
       get(name: string) {
-        console.warn(`pm.collectionVariables.get('${name}') is not supported — this client has no collection-scope variables. Use pm.environment or pm.globals instead.`)
-        return undefined
+        return Object.prototype.hasOwnProperty.call(globalsTracked.proxy, name)
+          ? globalsTracked.proxy[name]
+          : undefined
       },
-      set(name: string, _value: string) {
-        console.warn(`pm.collectionVariables.set('${name}', ...) is not supported — this client has no collection-scope variables. Use pm.environment.set or pm.globals.set instead.`)
+      set(name: string, value: string) {
+        globalsTracked.proxy[name] = value
+        pendingChanges.push(...globalsTracked.changes.splice(0))
       },
       unset(name: string) {
-        console.warn(`pm.collectionVariables.unset('${name}') is not supported — this client has no collection-scope variables. Use pm.environment.unset or pm.globals.unset instead.`)
+        delete globalsTracked.proxy[name]
+        pendingChanges.push(...globalsTracked.changes.splice(0))
       }
     },
     globals: {
@@ -507,6 +541,42 @@ export function createPmApi(
         }
       }
     },
+    // pm.sendRequest(url, cb) — GET a URL and hand the caller a Postman-
+    // shaped response. The promise is tracked in _pendingAsyncTests so
+    // runScriptDirect waits for the callback chain before returning the
+    // script result (var writes made inside the callback must survive).
+    sendRequest(url: string, callback: (error: any, response: SendRequestResponse | null) => void) {
+      if (!sendRequestExecutor) {
+        callback(new Error('pm.sendRequest is not available in this context'), null)
+        return
+      }
+      const run = sendRequestExecutor(url).then(result => {
+        const like: SendRequestResponse = {
+          code: result.status,
+          status: result.status,
+          statusText: result.statusText,
+          headers: () => result.headers,
+          json() {
+            try { return JSON.parse(result.bodyText) } catch { return undefined }
+          },
+          text: () => result.bodyText,
+          responseTime: result.time,
+          size: () => ({ body: result.size, header: 0, total: result.size })
+        }
+        try {
+          callback(null, like)
+        } catch (e: any) {
+          pm._tests.push({ name: `pm.sendRequest callback (${url})`, passed: false, error: e?.message ?? String(e) })
+        }
+      }).catch(err => {
+        try {
+          callback(err ?? new Error('sendRequest failed'), null)
+        } catch (e: any) {
+          pm._tests.push({ name: `pm.sendRequest callback (${url})`, passed: false, error: e?.message ?? String(e) })
+        }
+      })
+      pm._pendingAsyncTests!.push(run)
+    },
     _tests: [],
     _varChanges: pendingChanges,
     _pendingAsyncTests: pendingAsyncTests
@@ -600,7 +670,8 @@ export async function runScript(
     ctx.requestBody,
     ctx.response,
     ctx.envVars,
-    ctx.globals
+    ctx.globals,
+    ctx.sendRequest
   )
   const logs: string[] = []
   await runScriptDirect(script, pm, (msg) => {

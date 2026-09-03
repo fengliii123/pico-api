@@ -1,7 +1,7 @@
 // Hidden sandbox iframe for running user scripts under MV3 CSP.
 // Extension pages cannot use new Function(); sandbox pages can.
 
-import type { ScriptRunContext, ScriptRunResult } from './vm'
+import type { ScriptRunContext, ScriptRunResult, SendRequestExecutor } from './vm'
 import type { ResponseResult } from '../types'
 import { deepClone } from '@/utils/clone'
 
@@ -72,6 +72,9 @@ const pending = new Map<string, {
   resolve: (v: ScriptRunResult) => void
   reject: (e: Error) => void
 }>()
+// Per-run pm.sendRequest executors — the sandbox iframe cannot fetch
+// cross-origin itself, so it asks the host page to run the GET.
+const executorsByRun = new Map<string, { send: SendRequestExecutor } | undefined>()
 
 function onSandboxMessage(event: MessageEvent) {
   // Only accept messages from OUR sandbox iframe. The sandboxed frame has an
@@ -88,10 +91,33 @@ function onSandboxMessage(event: MessageEvent) {
     }
     return
   }
+  if (data.type === 'sandbox:sendRequest') {
+    const run = executorsByRun.get(data.runId)
+    if (!run?.send) {
+      expected.contentWindow?.postMessage(
+        { type: 'sandbox:sendRequestResult', subId: data.subId, ok: false, error: 'pm.sendRequest is not available' },
+        '*'
+      )
+      return
+    }
+    run.send(String(data.url)).then(payload => {
+      expected.contentWindow?.postMessage(
+        { type: 'sandbox:sendRequestResult', subId: data.subId, ok: true, payload },
+        '*'
+      )
+    }).catch((e: any) => {
+      expected.contentWindow?.postMessage(
+        { type: 'sandbox:sendRequestResult', subId: data.subId, ok: false, error: e?.message ?? String(e) },
+        '*'
+      )
+    })
+    return
+  }
   if (data.type !== 'sandbox:result') return
   const entry = pending.get(data.id)
   if (!entry) return
   pending.delete(data.id)
+  executorsByRun.delete(data.id)
   if (data.ok) {
     entry.resolve(data.output as ScriptRunResult)
   } else {
@@ -151,10 +177,12 @@ export async function runScriptViaSandbox(
   const frame = await ensureSandboxFrame()
   const id = String(++nextId)
   const input = serializeContextForSandbox(script, ctx)
+  executorsByRun.set(id, ctx.sendRequest ? { send: ctx.sendRequest } : undefined)
 
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       pending.delete(id)
+      executorsByRun.delete(id)
       reject(new Error('sandbox script timed out'))
     }, SANDBOX_TIMEOUT_MS)
 

@@ -2,6 +2,7 @@
 // extension pages stay on a strict CSP (script-src 'self' only).
 
 import { createPmApi, runScriptDirect } from '@/core/scripts/vm'
+import type { SendRequestExecutor, SendRequestResult } from '@/core/scripts/vm'
 import type { SandboxScriptInput } from '@/core/scripts/sandboxHost'
 import type { ResponseResult } from '@/core/types'
 
@@ -9,6 +10,50 @@ interface SandboxRunMessage {
   type: 'sandbox:run'
   id: string
   input: SandboxScriptInput
+}
+
+interface SandboxSubRequestResultMessage {
+  type: 'sandbox:sendRequestResult'
+  subId: number
+  ok: boolean
+  payload?: SendRequestResult
+  error?: string
+}
+
+// The sandboxed frame cannot fetch cross-origin itself (opaque origin +
+// CORS), so pm.sendRequest round-trips through the host page. Each call
+// gets a sub-id; replies arrive as sandbox:sendRequestResult messages.
+const SUB_TIMEOUT_MS = 20_000
+let subSeq = 0
+const pendingSubs = new Map<number, {
+  resolve: (r: SendRequestResult) => void
+  reject: (e: Error) => void
+}>()
+
+window.addEventListener('message', (event: MessageEvent<SandboxSubRequestResultMessage>) => {
+  if (event.source !== window.parent) return
+  const data = event.data
+  if (!data || data.type !== 'sandbox:sendRequestResult') return
+  const entry = pendingSubs.get(data.subId)
+  if (!entry) return
+  pendingSubs.delete(data.subId)
+  if (data.ok) entry.resolve(data.payload!)
+  else entry.reject(new Error(data.error ?? 'pm.sendRequest failed'))
+})
+
+function sandboxSendRequest(runId: string): SendRequestExecutor {
+  return (url) => new Promise<SendRequestResult>((resolve, reject) => {
+    const subId = ++subSeq
+    const timer = setTimeout(() => {
+      pendingSubs.delete(subId)
+      reject(new Error('pm.sendRequest timed out'))
+    }, SUB_TIMEOUT_MS)
+    pendingSubs.set(subId, {
+      resolve: (r) => { clearTimeout(timer); resolve(r) },
+      reject: (e) => { clearTimeout(timer); reject(e) }
+    })
+    window.parent.postMessage({ type: 'sandbox:sendRequest', runId, subId, url }, '*')
+  })
 }
 
 interface SandboxResultMessage {
@@ -70,7 +115,8 @@ window.addEventListener('message', async (event: MessageEvent<SandboxRunMessage>
       input.requestBody,
       responseFromWire(input.response),
       input.envVars,
-      input.globals
+      input.globals,
+      sandboxSendRequest(id)
     )
     await runScriptDirect(input.script, pm, (msg) => logs.push(msg))
 

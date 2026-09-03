@@ -25,7 +25,7 @@ or creating an account.
 - **Live streaming responses** — SSE and chunked responses render chunk by chunk as they arrive
 - Response viewer with Content-Type-aware rendering (JSON tree, formatted body, headers, cookies, timing)
 - Environments & global variables with `{{variable}}` substitution across URL, headers, body, and scripts
-- Pre-request & post-response scripts with a Postman-style `pm` API (sandboxed iframe), including `pm.test` assertions
+- Pre-request & post-response scripts with a Postman-style `pm` API (sandboxed iframe), including `pm.test` assertions, `pm.sendRequest` (fetch another endpoint from a script), and `pm.collectionVariables` (aliased to globals — there is no collection-scope store; `pm.setNextRequest` is not supported without a collection runner)
 - Collections: tree-structured folders (up to 5 levels), duplicate, move, undo/redo
 - History of sent requests (capped) with resend
 - Import cURL commands, OpenAPI/Swagger specs, and ApiFox projects; export collections; copy any request as cURL

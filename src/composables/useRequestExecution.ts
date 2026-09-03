@@ -16,7 +16,9 @@ import { runScript, type TestResult, type VariableChange, type PmApi } from '@/c
 import { history as historyDb } from '@/db'
 import { uid } from '@/utils/id'
 import { deepClone } from '@/utils/clone'
-import type { EnvironmentVariable, HistoryEntry, ResponseResult } from '@/core/types'
+import { defaultRequestSettings } from '@/core/defaults'
+import type { SendRequestExecutor } from '@/core/scripts/vm'
+import type { DraftRequest, EnvironmentVariable, HistoryEntry, ResponseResult } from '@/core/types'
 import { useI18n } from '@/i18n/useI18n'
 import { fmt } from '@/i18n'
 import { recordSuccessfulSend, showRatingPromptIfDue } from '@/utils/ratingPrompt'
@@ -135,6 +137,36 @@ export function useRequestExecution() {
     }
   }
 
+  // Executor handed to pm.sendRequest: a plain GET through the same
+  // normalize/execute pipeline the Send button uses, so it respects the
+  // extension bridge (no CORS) and dev-mode direct fetch alike.
+  const sendRequestExecutor: SendRequestExecutor = async (url) => {
+    const normalized = normalize({
+      id: null,
+      folderId: null,
+      name: 'pm.sendRequest',
+      method: 'GET',
+      url,
+      headers: [],
+      params: [],
+      body: { mode: 'none' },
+      auth: { type: 'none' },
+      scripts: { preRequest: '', postResponse: '' },
+      settings: defaultRequestSettings()
+    } as DraftRequest)
+    const res = await execute(normalized)
+    const headers: Record<string, string> = {}
+    for (const [k, v] of res.headers) headers[k.toLowerCase()] = v
+    return {
+      status: res.status,
+      statusText: res.statusText,
+      headers,
+      bodyText: res.body.text,
+      time: res.time,
+      size: res.body.size
+    }
+  }
+
   // Run the pre-request script. Returns the captured logs and a flag
   // indicating whether the script wrote any variables (caller must
   // re-normalize + re-validate the URL when this is true).
@@ -152,7 +184,8 @@ export function useRequestExecution() {
         requestBody: normalized.body as string | undefined,
         response: null,
         envVars: envStore.activeVariables,
-        globals: envStore.globals.variables
+        globals: envStore.globals.variables,
+        sendRequest: sendRequestExecutor
       },
       (msg) => { /* logs collected in result */ void msg }
     )
@@ -183,7 +216,8 @@ export function useRequestExecution() {
         requestBody: normalized.body as string | undefined,
         response,
         envVars: envStore.activeVariables,
-        globals: envStore.globals.variables
+        globals: envStore.globals.variables,
+        sendRequest: sendRequestExecutor
       }
     )
     return { logs: result.logs, testResults: result.tests }
