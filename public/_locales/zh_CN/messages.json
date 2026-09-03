@@ -1,4 +1,8 @@
 {
-  "extName": { "message": "HTTP 与 REST 客户端 - Pico API" },
-  "extDescription": { "message": "轻量级 Chrome HTTP 客户端与 REST API 接口测试工具。发送请求、调试接口、实时查看流式响应，无需注册账号。" }
+  "extName": {
+    "message": "HTTP 与 REST 客户端 - Pico API"
+  },
+  "extDescription": {
+    "message": "轻量级 Chrome HTTP 客户端与 REST API 接口测试工具。发送请求、实时查看流式响应。数据全部本地保存——无账号、无追踪、无云端。"
+  }
 }
