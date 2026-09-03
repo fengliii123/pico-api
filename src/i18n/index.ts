@@ -348,6 +348,12 @@ export interface Translations {
   importSuccess: string
   importFailed: string
   invalidBackupFile: string
+  nothingToImport: string
+  pasteFirst: string
+  couldNotParse: string
+  couldNotParseCurl: string
+  fileTooLarge: string
+  couldNotReadFile: string
 
   onboardingTitle: string
   onboardingBody: string
@@ -813,6 +819,12 @@ const en: Translations = {
   importSuccess: 'Imported successfully',
   importFailed: 'Import failed',
   invalidBackupFile: 'Invalid backup file format',
+  nothingToImport: 'Nothing to import',
+  pasteFirst: 'Paste something first',
+  couldNotParse: 'Could not parse',
+  couldNotParseCurl: 'Could not parse this cURL command',
+  fileTooLarge: 'File too large: {size} MB — limit is 10 MB',
+  couldNotReadFile: 'Could not read file',
 
   onboardingTitle: 'Welcome to Pico API',
   onboardingBody: 'Send your first request in 10 seconds — press the button below, then hit Send. Everything stays on this machine: no account, no cloud, no tracking.',
@@ -1268,6 +1280,12 @@ const zhCN: Translations = {
   importConfirmContent: '将覆盖当前所有数据（文件夹、请求、环境、全局变量、历史）。是否继续？',
   importSuccess: '导入成功',
   importFailed: '导入失败',
+  nothingToImport: '没有可导入的内容',
+  pasteFirst: '请先粘贴内容',
+  couldNotParse: '解析失败',
+  couldNotParseCurl: '无法解析这条 cURL 命令',
+  fileTooLarge: '文件过大：{size} MB，上限 10 MB',
+  couldNotReadFile: '无法读取文件',
   invalidBackupFile: '无效的备份文件格式',
 
   onboardingTitle: '欢迎使用 Pico API',

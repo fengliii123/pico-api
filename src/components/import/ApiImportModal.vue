@@ -134,7 +134,7 @@ const openApiPreview = computed(() => {
     warnings.value = result.warnings
     return result
   } catch (e: any) {
-    error.value = e?.message ?? 'Could not parse'
+    error.value = e?.message ?? t.value.couldNotParse
     return null
   }
 })
@@ -192,7 +192,7 @@ const willImportCount = computed(() => {
 async function importOpenApi() {
   const p = openApiPreview.value
   if (!p) {
-    error.value = 'Nothing to import'
+    error.value = t.value.nothingToImport
     return
   }
 
@@ -262,7 +262,7 @@ async function onImport() {
   error.value = ''
   warnings.value = []
   if (!text.value.trim()) {
-    error.value = 'Paste something first.'
+    error.value = t.value.pasteFirst
     return
   }
   try {
@@ -281,7 +281,7 @@ async function onImport() {
         ? t.value.folderNameExists
         : t.value.requestNameExists) + `: ${conflict[2]}`
     } else {
-      error.value = raw || (mode.value === 'curl' ? 'Could not parse cURL command' : 'Import failed')
+      error.value = raw || (mode.value === 'curl' ? t.value.couldNotParseCurl : t.value.importFailed)
     }
   }
 }
@@ -293,7 +293,7 @@ async function onFileSelected(file: File) {
   if (!file) return
   // Cap file size at 10MB to avoid pathological inputs locking the UI.
   if (file.size > 10 * 1024 * 1024) {
-    error.value = `File too large: ${(file.size / 1024 / 1024).toFixed(1)} MB. Limit is 10 MB.`
+    error.value = fmt(t.value.fileTooLarge, { size: (file.size / 1024 / 1024).toFixed(1) })
     return
   }
   try {
@@ -302,7 +302,7 @@ async function onFileSelected(file: File) {
     error.value = ''
     message.success(fmt(t.value.loadedFileName, { name: file.name }))
   } catch (e: any) {
-    error.value = `Could not read file: ${e?.message ?? e}`
+    error.value = `${t.value.couldNotReadFile}: ${e?.message ?? e}`
   }
 }
 
