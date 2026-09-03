@@ -334,6 +334,31 @@ export const requests = {
 }
 
 
+// History entries accumulate on every send; without a cap the IndexedDB
+// store grows unboundedly for heavy users. After each write we prune back
+// to the newest MAX_HISTORY entries.
+export const MAX_HISTORY = 500
+
+// Pure: ids of entries beyond the newest `keep` (sorted by sentAt desc).
+export function excessHistoryIds(
+  entries: Array<Pick<HistoryEntry, 'id' | 'sentAt'>>,
+  keep: number
+): string[] {
+  if (entries.length <= keep) return []
+  const sorted = [...entries].sort((a, b) => b.sentAt - a.sentAt)
+  return sorted.slice(keep).map(e => e.id)
+}
+
+async function pruneHistory(): Promise<void> {
+  const db = await openDB()
+  const readOnly = tx(db, STORE_HISTORY, 'readonly')
+  const all = await awaitReq<HistoryEntry[]>(readOnly.objectStore(STORE_HISTORY).getAll())
+  const excess = excessHistoryIds(all, MAX_HISTORY)
+  if (excess.length === 0) return
+  const writable = tx(db, STORE_HISTORY, 'readwrite')
+  await Promise.all(excess.map(id => awaitReq(writable.objectStore(STORE_HISTORY).delete(id))))
+}
+
 export const history = {
   async list(limit = 100): Promise<HistoryEntry[]> {
     const db = await openDB()
@@ -364,6 +389,10 @@ export const history = {
     const db = await openDB()
     const t = tx(db, STORE_HISTORY, 'readwrite')
     await awaitReq(t.objectStore(STORE_HISTORY).put(toIDB(entry)))
+    // Pruning is best-effort — the entry itself is already saved.
+    try {
+      await pruneHistory()
+    } catch { /* ignore */ }
   },
 
   async clear(): Promise<void> {
