@@ -9,6 +9,7 @@ import { useI18n } from '@/i18n/useI18n'
 import { fmt } from '@/i18n'
 import { methodColor } from '@/utils/methodColors'
 import type { HistoryEntry } from '@/core/types'
+import { historyEntryToPatch } from '@/core/history'
 
 const { t } = useI18n()
 
@@ -129,10 +130,16 @@ function truncateUrl(url: string, maxLen = 50): string {
 }
 
 function runEntry(entry: HistoryEntry) {
+  const patch = historyEntryToPatch(entry)
   reqStore.newRequest(null)
-  reqStore.setName(entry.name || t.value.unnamedRequest)
-  reqStore.setMethod(entry.method)
-  reqStore.setUrl(entry.url)
+  reqStore.setName(patch.name || t.value.unnamedRequest)
+  reqStore.setMethod(patch.method)
+  // setUrl before snapshot fields: it re-derives params from the URL's
+  // query string, so restored params/body/headers must come after it.
+  reqStore.setUrl(patch.url)
+  if (patch.headers) reqStore.setHeaders(patch.headers)
+  if (patch.params) reqStore.setParams(patch.params)
+  if (patch.body) reqStore.setBody(patch.body)
   resStore.setActive(null)
   emit('update:open', false)
 }

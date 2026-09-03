@@ -77,6 +77,14 @@ export interface HistoryEntry {
   time: number               // ms
   size: number               // bytes
   sentAt: number
+  // Full request state at send time, so clicking the history entry can
+  // restore everything — not just method/url/name. Absent on entries
+  // recorded before this field existed.
+  snapshot?: {
+    headers: KeyValueRow[]
+    params: KeyValueRow[]
+    body: RequestBody
+  }
 }
 
 // A single key/value entry inside an Environment or Globals.

@@ -15,6 +15,7 @@ import { findUnresolvedVariables } from '@/core/variables'
 import { runScript, type TestResult, type VariableChange, type PmApi } from '@/core/scripts/vm'
 import { history as historyDb } from '@/db'
 import { uid } from '@/utils/id'
+import { deepClone } from '@/utils/clone'
 import type { EnvironmentVariable, HistoryEntry, ResponseResult } from '@/core/types'
 import { useI18n } from '@/i18n/useI18n'
 import { fmt } from '@/i18n'
@@ -201,7 +202,14 @@ export function useRequestExecution() {
       status,
       time,
       size,
-      sentAt: Date.now()
+      sentAt: Date.now(),
+      // Snapshot the request so the history panel can restore the full
+      // state (headers/params/body), not just method/url/name.
+      snapshot: {
+        headers: deepClone(d.headers),
+        params: deepClone(d.params),
+        body: deepClone(d.body)
+      }
     }
     await historyDb.add(entry)
   }
