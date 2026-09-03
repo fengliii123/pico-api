@@ -1,17 +1,21 @@
 <script setup lang="ts">
 // One-shot onboarding modal shown the first time the user opens the app.
-// We mark "seen" in localStorage so it never re-appears on subsequent
-// visits — Settings → Export All Data is the real recovery path, this is
-// just a hello wave.
+// The primary CTA fills the URL bar with a live example endpoint so the
+// user can send their first request within seconds — the fastest path to
+// the "it works" moment. "Seen" is marked in localStorage so the modal
+// never re-appears on subsequent visits.
 
-import { ref } from 'vue'
+import { nextTick, ref } from 'vue'
 import { Modal, Button } from 'ant-design-vue'
 import { RocketOutlined } from '@ant-design/icons-vue'
 import { useI18n } from '@/i18n/useI18n'
+import { useRequestStore } from '@/stores/request'
 
 const { t } = useI18n()
+const reqStore = useRequestStore()
 
 const STORAGE_KEY = 'mp2:onboarded'
+const EXAMPLE_URL = 'https://jsonplaceholder.typicode.com/users/1'
 
 const open = ref(readInitial())
 
@@ -32,6 +36,19 @@ function dismiss() {
     // is the user sees the modal twice — acceptable.
   }
 }
+
+// Fill the example URL into the current draft and focus the URL bar; the
+// user makes the final, deliberate click on Send.
+async function tryExample() {
+  dismiss()
+  reqStore.setUrl(EXAMPLE_URL)
+  await nextTick()
+  const input = document.querySelector<HTMLInputElement>(
+    'input[placeholder*="api.example.com"], input[placeholder*="路径"], input[placeholder*="url" i]'
+  )
+  input?.focus()
+  input?.select()
+}
 </script>
 
 <template>
@@ -50,7 +67,8 @@ function dismiss() {
         <p class="onboarding-body">{{ t.onboardingBody }}</p>
       </div>
       <div class="onboarding-actions">
-        <Button type="primary" @click="dismiss">{{ t.gotIt }}</Button>
+        <Button class="onboarding-skip" @click="dismiss">{{ t.skip }}</Button>
+        <Button type="primary" @click="tryExample">{{ t.tryExample }}</Button>
       </div>
     </div>
   </Modal>
@@ -87,5 +105,11 @@ function dismiss() {
 .onboarding-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
+}
+
+.onboarding-skip {
+  border: none;
+  color: var(--text-tertiary);
 }
 </style>

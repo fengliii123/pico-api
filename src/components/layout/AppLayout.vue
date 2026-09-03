@@ -34,6 +34,7 @@ const { isCommandPaletteOpen, isQuickSwitchOpen, closeCommandPalette } = useKeyb
 onMounted(async () => {
   await Promise.all([collStore.load(), envStore.load()])
   reqStore.newRequest(null)
+  void seedExamplesIfFirstRun()
 
   // Register global shortcuts
   registerShortcut({
@@ -58,6 +59,42 @@ onMounted(async () => {
 const requestEditor = ref<InstanceType<typeof RequestEditor> | null>(null)
 function onResend() {
   requestEditor.value?.send?.()
+}
+
+// First-run seed: a small Examples folder so a brand-new user opens the
+// app to something sendable instead of an empty tree. One-shot via
+// localStorage, and never fires when the user already has data (e.g. a
+// restored backup on a machine with cleared localStorage).
+async function seedExamplesIfFirstRun() {
+  try {
+    if (localStorage.getItem('mp2:seededExamples') === '1') return
+  } catch { return }
+  if (collStore.folderList.length > 0 || collStore.requestList.length > 0) {
+    try { localStorage.setItem('mp2:seededExamples', '1') } catch { /* ignore */ }
+    return
+  }
+  try {
+    const folder = await collStore.createFolder(null, t.value.examplesFolderName)
+    await collStore.createRequest(folder.id, {
+      name: t.value.exampleGetUser,
+      method: 'GET',
+      url: 'https://jsonplaceholder.typicode.com/users/1',
+      headers: [],
+      params: [],
+      body: { mode: 'none' }
+    })
+    await collStore.createRequest(folder.id, {
+      name: t.value.examplePostEcho,
+      method: 'POST',
+      url: 'https://postman-echo.com/post',
+      headers: [{ key: 'Content-Type', value: 'application/json', enabled: true }],
+      params: [],
+      body: { mode: 'raw', rawType: 'json', rawText: '{\n  "hello": "pico"\n}' }
+    })
+    try { localStorage.setItem('mp2:seededExamples', '1') } catch { /* ignore */ }
+  } catch {
+    // Seeding is best-effort — a failure must never block app usage.
+  }
 }
 
 const importOpen = ref(false)

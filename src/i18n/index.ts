@@ -349,6 +349,10 @@ export interface Translations {
   onboardingTitle: string
   onboardingBody: string
   gotIt: string
+  skip: string
+  examplesFolderName: string
+  exampleGetUser: string
+  examplePostEcho: string
 
   // Shared validation / messages
   nameRequired: string
@@ -805,7 +809,11 @@ const en: Translations = {
   invalidBackupFile: 'Invalid backup file format',
 
   onboardingTitle: 'Welcome to Pico API',
-  onboardingBody: 'Create a folder to organize your requests, import an existing collection, or just start sending requests. Use ⌘K / Ctrl+K to open the command palette anytime.',
+  onboardingBody: 'Send your first request in 10 seconds — press the button below, then hit Send. Everything stays on this machine: no account, no cloud, no tracking.',
+  skip: 'Skip',
+  examplesFolderName: 'Examples',
+  exampleGetUser: 'Get a demo user (JSON)',
+  examplePostEcho: 'Echo a POST with JSON body',
   gotIt: 'Got it',
 
   nameRequired: 'Name is required',
@@ -1254,7 +1262,11 @@ const zhCN: Translations = {
   invalidBackupFile: '无效的备份文件格式',
 
   onboardingTitle: '欢迎使用 Pico API',
-  onboardingBody: '创建文件夹来组织请求，导入现有集合，或直接发送请求。随时按 ⌘K / Ctrl+K 打开命令面板。',
+  onboardingBody: '10 秒发出你的第一个请求——点击下面的按钮，然后按发送。所有数据都保存在本机：无账号、无云端、无追踪。',
+  skip: '跳过',
+  examplesFolderName: '示例',
+  exampleGetUser: '获取演示用户(JSON)',
+  examplePostEcho: '发送 JSON 并回显',
   gotIt: '知道了',
 
   nameRequired: '名称不能为空',
