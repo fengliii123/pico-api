@@ -4,6 +4,62 @@ All notable changes to Pico API are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.7] — 2026-09-03
+
+Feature, retention, and performance release.
+
+### Added
+
+- **`pm.sendRequest(url, cb)`** in scripts: fetch another endpoint from a
+  pre-request or test script and use the result (Postman-shaped response
+  object with `json()/text()/headers()/status`). Routed through the
+  extension's request bridge — no CORS limits; sandbox runs proxy the call
+  through the host page via a hardened sub-message protocol.
+- **`pm.collectionVariables`** now works as a read/write alias over globals
+  (previously a console warning). Documented mapping in the README.
+- **Postman-style assertions**: `pm.response.to.have.header()/body()`,
+  status getters (`to.be.ok/created/accepted/badRequest/unauthorized/
+  forbidden/notFound/serverError`), and `pm.expect().to.eql/equal/include/
+  a/an` plus `to.be.empty/null/undefined/defined/exist/true/false`.
+- **Collection tree search/filter** by name or URL, with ancestors kept
+  visible and auto-expanded while searching.
+- **First-run experience**: the app opens automatically right after
+  install; the onboarding dialog offers a one-click example request; an
+  "Examples / 示例" folder with two sendable requests is seeded once (and
+  re-localizes when the UI language changes, unless the user edited it).
+- **History "Re-run" now actually re-sends** the request after restoring
+  it (method, URL, headers, params, body) into the editor.
+- **OpenAPI import resolves local `$ref`s** (`#/components/…` and legacy
+  `#/definitions/…`), including nested refs, with cycle protection and a
+  summary warning for unresolvable/external refs; schema examples now
+  honor `default` and `enum` values.
+- **Playable e2e smoke suite** (`npm run test:e2e`): Playwright config +
+  local fixture server covering the install→send→response golden path.
+
+### Changed
+
+- **JSON tree rewritten as a lazy recursive renderer**: arbitrarily large
+  responses open instantly (containers materialize only when expanded,
+  wide containers stay collapsed by default) — the 10k-node tree
+  disablement is gone.
+- **Store summaries lead with privacy** (en/zh): "Data stays local: no
+  account, no tracking."
+- Import-dialog errors are localized (en/zh); duplicate cURL imports
+  auto-number ("Imported cURL 2") instead of failing.
+
+### Fixed
+
+- Timing breakdown on re-sent requests showed the PREVIOUS run's numbers
+  (resource-timing entry selection).
+- `pm.expect(number).to.be.empty` incorrectly passed; it now fails
+  (chai semantics).
+- Import conflicts leaked raw i18n machine codes (`requestNameConflict:…`)
+  into the UI.
+- History grows unbounded in IndexedDB — entries are now pruned to the
+  newest 500 after each write.
+- Duplicate-cURL import name collision (see above).
+- Dev-page favicon 404.
+
 ## [1.0.6] — 2026-08-29
 
 Store visibility release.

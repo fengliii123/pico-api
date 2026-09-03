@@ -16,7 +16,18 @@ import { fileURLToPath } from 'node:url'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const PROJECT_ROOT = path.resolve(__dirname, '..')
-const ZIP_PATH = path.resolve(PROJECT_ROOT, 'store', 'pico-api-1.0.0.zip')
+// Usage: node scripts/verify-package.mjs [store/pico-api-<version>.zip]
+// Defaults to the newest pico-api-*.zip in store/.
+const argZip = process.argv[2]
+const ZIP_PATH = argZip
+  ? path.resolve(PROJECT_ROOT, argZip)
+  : (() => {
+      const dir = path.join(PROJECT_ROOT, 'store')
+      const zips = fs.existsSync(dir)
+        ? fs.readdirSync(dir).filter(f => /^pico-api-.*\.zip$/.test(f)).sort()
+        : []
+      return zips.length ? path.join(dir, zips[zips.length - 1]) : path.join(dir, 'pico-api.zip')
+    })()
 
 const CHROME_BUNDLE =
   process.env.PLAYWRIGHT_CHROMIUM_PATH ||
@@ -68,7 +79,7 @@ if (!fs.existsSync(manifestPath)) {
     const p = path.join(extDir, manifest.background.service_worker)
     if (!fs.existsSync(p)) errors.push(`service worker file missing: ${manifest.background.service_worker}`)
   }
-  for (const html of ['options.html', 'sidepanel.html']) {
+  for (const html of ['options.html', 'sandbox.html']) {
     if (!fs.existsSync(path.join(extDir, html))) errors.push(`${html} missing`)
   }
 }
