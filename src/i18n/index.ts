@@ -209,7 +209,6 @@ export interface Translations {
   // ResponsePanel
   sending: string
   largePrettyOff: string
-  treeTooLarge: string
   jsonSearchPlaceholder: string
   expandAllBtn: string
   collapseAllBtn: string
@@ -689,7 +688,6 @@ const en: Translations = {
 
   sending: 'Sending...',
   largePrettyOff: 'large · pretty off',
-  treeTooLarge: 'JSON too large for the tree view — switch to Pretty or Raw',
   jsonSearchPlaceholder: 'Search keys or values…',
   expandAllBtn: 'Expand',
   collapseAllBtn: 'Collapse',
@@ -1151,7 +1149,6 @@ const zhCN: Translations = {
 
   sending: '发送中...',
   largePrettyOff: '较大 · 已关闭美化',
-  treeTooLarge: 'JSON 过大，树视图已停用——请切换到美化或原始视图',
   jsonSearchPlaceholder: '搜索键或值…',
   expandAllBtn: '展开全部',
   collapseAllBtn: '折叠全部',

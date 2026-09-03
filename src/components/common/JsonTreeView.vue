@@ -1,10 +1,18 @@
 <script setup lang="ts">
-// JSON Tree View component for collapsible JSON visualization
-// Supports expand/collapse all, search within JSON, copy path
+// JSON Tree View — lazy rendering edition.
+//
+// The old implementation flattened the whole document into one array and
+// rendered every node (with a 10k-node kill switch). This version keeps a
+// shared expansion Set and materializes children only while expanded, so
+// arbitrarily large JSON opens instantly collapsed-by-default (first two
+// levels open). Search uses core/jsonTree helpers and auto-expands the
+// ancestors of every hit.
 
-import { computed, ref, watch } from 'vue'
-import { Button, Input, Tooltip, message } from 'ant-design-vue'
-import { ExpandOutlined, ShrinkOutlined, CopyOutlined, SearchOutlined } from '@ant-design/icons-vue'
+import { computed, provide, ref, watch } from 'vue'
+import { Button, Input, message } from 'ant-design-vue'
+import { ExpandOutlined, ShrinkOutlined, SearchOutlined } from '@ant-design/icons-vue'
+import JsonTreeNode from './JsonTreeNode.vue'
+import { defaultExpandedPaths, visiblePathsFor } from '@/core/jsonTree'
 import { useI18n } from '@/i18n/useI18n'
 
 const { t } = useI18n()
@@ -13,88 +21,73 @@ const props = defineProps<{
   data: any
 }>()
 
-interface TreeNode {
-  key: string
-  value: any
-  type: 'object' | 'array' | 'string' | 'number' | 'boolean' | 'null'
-  path: string
-  parentPath: string | null
-  depth: number
-}
-
-// Beyond this many flattened nodes the tree stops rendering entirely —
-// Vue re-rendering tens of thousands of rows freezes the panel. The user
-// still has Pretty/Raw for the same body.
-const TREE_NODE_LIMIT = 10_000
-
-const allCollapsed = ref(false)
 const searchQuery = ref('')
 const copiedPath = ref<string | null>(null)
 
-function getType(value: any): TreeNode['type'] {
-  if (value === null) return 'null'
-  if (Array.isArray(value)) return 'array'
-  return typeof value as TreeNode['type']
-}
+const expandedKeys = ref<Set<string>>(new Set())
 
-function buildTree(data: any, path: string = '', depth: number = 0, parentPath: string | null = null): TreeNode[] {
-  const nodes: TreeNode[] = []
-  const type = getType(data)
+// Re-seed default expansion whenever a new response arrives.
+watch(
+  () => props.data,
+  (v) => {
+    searchQuery.value = ''
+    expandedKeys.value = new Set(defaultExpandedPaths(v, 2))
+  },
+  { immediate: true }
+)
 
-  if (type === 'object' && data !== null) {
-    const keys = Object.keys(data)
-    nodes.push({ key: path || 'root', value: data, type, path, parentPath, depth })
-    for (const key of keys) {
-      const childPath = path ? `${path}.${key}` : key
-      nodes.push(...buildTree(data[key], childPath, depth + 1, path))
+// Search: matched paths + ancestors stay visible and get expanded.
+const visibleSet = computed<Set<string> | null>(() => {
+  if (!searchQuery.value.trim()) return null
+  const vis = visiblePathsFor(props.data, searchQuery.value)
+  if (vis && vis.size > 0) {
+    const expanded = new Set(expandedKeys.value)
+    for (const p of vis) {
+      if (isContainerPath(p)) expanded.add(p)
     }
-  } else if (type === 'array') {
-    nodes.push({ key: path || 'root', value: data, type, path, parentPath, depth })
-    data.forEach((item: any, index: number) => {
-      const childPath = `${path}[${index}]`
-      nodes.push(...buildTree(item, childPath, depth + 1, path))
-    })
-  } else {
-    nodes.push({ key: path, value: data, type, path, parentPath, depth })
+    expandedKeys.value = expanded
   }
-
-  return nodes
-}
-
-const treeData = computed(() => buildTree(props.data))
-const tooLarge = computed(() => treeData.value.length > TREE_NODE_LIMIT)
-
-// path → parentPath lookup so visibility can walk ancestor links instead
-// of re-parsing path strings on every render.
-const parentOf = computed(() => {
-  const m = new Map<string, string | null>()
-  for (const n of treeData.value) m.set(n.path, n.parentPath)
-  return m
+  return vis
 })
 
-const collapsedKeys = ref<Set<string>>(new Set())
-
-function toggleCollapse(key: string) {
-  if (collapsedKeys.value.has(key)) {
-    collapsedKeys.value.delete(key)
-  } else {
-    collapsedKeys.value.add(key)
+function isContainerPath(path: string): boolean {
+  let cur: any = props.data
+  if (!path) return cur !== null && typeof cur === 'object'
+  for (const raw of path.split(/(?=[.[])/)) {
+    const seg = raw.replace(/^[.]/, '')
+    if (seg.startsWith('[')) {
+      cur = cur?.[Number(seg.slice(1, -1))]
+    } else {
+      cur = cur?.[seg]
+    }
+    if (cur === undefined || cur === null) return false
   }
-  collapsedKeys.value = new Set(collapsedKeys.value)
+  return typeof cur === 'object' && cur !== null
+}
+
+function toggle(path: string) {
+  const next = new Set(expandedKeys.value)
+  if (next.has(path)) next.delete(path)
+  else next.add(path)
+  expandedKeys.value = next
 }
 
 function expandAll() {
-  collapsedKeys.value = new Set()
-  allCollapsed.value = false
+  // Deliberately materializes everything — user-initiated, may be slow on
+  // very large documents (that's the trade for unlimited depth).
+  const all = new Set<string>()
+  const walk = (v: any, path: string) => {
+    if (v === null || typeof v !== 'object') return
+    if (path) all.add(path)
+    if (Array.isArray(v)) v.forEach((item: any, i: number) => walk(item, `${path}[${i}]`))
+    else for (const [k, child] of Object.entries(v)) walk(child, path ? `${path}.${k}` : k)
+  }
+  walk(props.data, '')
+  expandedKeys.value = all
 }
 
 function collapseAll() {
-  allCollapsed.value = true
-  collapsedKeys.value = new Set()
-}
-
-function isCollapsed(key: string): boolean {
-  return collapsedKeys.value.has(key)
+  expandedKeys.value = new Set()
 }
 
 async function copyPath(path: string) {
@@ -107,82 +100,13 @@ async function copyPath(path: string) {
   }
 }
 
-// Filter nodes based on search query
-const filteredNodes = computed(() => {
-  if (!searchQuery.value.trim()) return treeData.value
-
-  const q = searchQuery.value.toLowerCase()
-  return treeData.value.filter(node => {
-    const pathMatch = node.path.toLowerCase().includes(q)
-    const valueMatch = String(node.value).toLowerCase().includes(q)
-    return pathMatch || valueMatch
-  })
+provide('jsonTreeCtx', {
+  isExpanded: (p: string) => expandedKeys.value.has(p),
+  toggle,
+  isVisible: (p: string) => visibleSet.value === null || visibleSet.value.has(p),
+  copyPath,
+  copiedPath: () => copiedPath.value
 })
-
-function formatValue(node: TreeNode): string {
-  switch (node.type) {
-    case 'string':
-      return `"${node.value}"`
-    case 'null':
-      return 'null'
-    case 'boolean':
-    case 'number':
-      return String(node.value)
-    case 'object':
-      return `{${Object.keys(node.value).length}}`
-    case 'array':
-      return `[${node.value.length}]`
-    default:
-      return String(node.value)
-  }
-}
-
-function getValueClass(node: TreeNode): string {
-  switch (node.type) {
-    case 'string': return 'json-string'
-    case 'number': return 'json-number'
-    case 'boolean': return 'json-boolean'
-    case 'null': return 'json-null'
-    default: return ''
-  }
-}
-
-// Check if node is a container (object or array)
-function isContainer(node: TreeNode): boolean {
-  return node.type === 'object' || node.type === 'array'
-}
-
-// Get the display key (without root)
-function getDisplayKey(path: string): string {
-  if (!path) return ''
-  const parts = path.split('.')
-  return parts[parts.length - 1]
-}
-
-// Check if we should render this node: every ancestor up the chain must
-// be expanded. Walks the precomputed parentPath links — no string parsing.
-function shouldRender(node: TreeNode): boolean {
-  let cur: string | null = node.parentPath
-  while (cur !== null) {
-    if (collapsedKeys.value.has(cur)) return false
-    cur = parentOf.value.get(cur) ?? null
-  }
-  return true
-}
-
-// Collapse to specific depth
-function collapseToDepth(maxDepth: number) {
-  allCollapsed.value = false
-  const keysToCollapse = new Set<string>()
-
-  for (const node of treeData.value) {
-    if (node.depth >= maxDepth && isContainer(node)) {
-      keysToCollapse.add(node.path)
-    }
-  }
-
-  collapsedKeys.value = keysToCollapse
-}
 </script>
 
 <template>
@@ -210,50 +134,8 @@ function collapseToDepth(maxDepth: number) {
         </Button>
       </div>
     </div>
-    <div v-if="tooLarge" class="json-tree-too-large">
-      {{ t.treeTooLarge }}
-    </div>
-    <div v-else class="json-tree-content">
-      <template v-for="node in filteredNodes" :key="node.path">
-        <div
-          v-if="shouldRender(node)"
-          class="json-node"
-          :style="{ paddingLeft: node.depth * 16 + 'px' }"
-        >
-          <template v-if="isContainer(node)">
-            <div class="json-container-row" @click="toggleCollapse(node.path)">
-              <span class="json-toggle">
-                {{ isCollapsed(node.path) ? '▶' : '▼' }}
-              </span>
-              <span class="json-key">{{ getDisplayKey(node.path) || 'root' }}</span>
-              <span class="json-bracket">{{ node.type === 'array' ? '[' : '{' }}</span>
-              <span v-if="isCollapsed(node.path)" class="json-preview">
-                {{ formatValue(node) }}
-              </span>
-              <span class="json-bracket">{{ node.type === 'array' ? ']' : '}' }}</span>
-            </div>
-          </template>
-          <template v-else>
-            <div class="json-value-row">
-              <span class="json-key">{{ getDisplayKey(node.path) || 'root' }}</span>
-              <span class="json-colon">:</span>
-              <span :class="['json-value', getValueClass(node)]">{{ formatValue(node) }}</span>
-              <Tooltip :title="copiedPath === node.path ? t.copied : t.copyPath">
-                <Button
-                  size="small"
-                  type="text"
-                  class="copy-path-btn"
-                  @click.stop="copyPath(node.path)"
-                >
-                  <template #icon>
-                    <CopyOutlined :style="{ color: copiedPath === node.path ? 'var(--status-success)' : 'var(--text-tertiary)' }" />
-                  </template>
-                </Button>
-              </Tooltip>
-            </div>
-          </template>
-        </div>
-      </template>
+    <div class="json-tree-content">
+      <JsonTreeNode :node-key="''" :value="data" path="" :depth="0" />
     </div>
   </div>
 </template>
@@ -282,12 +164,6 @@ function collapseToDepth(maxDepth: number) {
   gap: var(--space-1);
 }
 
-.json-tree-too-large {
-  padding: var(--space-6) var(--space-5);
-  color: var(--status-warning-fg);
-  font-size: var(--fs-sm);
-}
-
 .json-tree-content {
   padding: var(--space-3) var(--space-5);
   max-height: 50vh;
@@ -296,85 +172,5 @@ function collapseToDepth(maxDepth: number) {
   font-size: 12px;
   line-height: 1.6;
   color: var(--text-primary);
-}
-
-.json-node {
-  white-space: nowrap;
-}
-
-.json-container-row {
-  cursor: pointer;
-  color: var(--text-primary);
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-}
-
-.json-container-row:hover {
-  background: var(--accent-soft-bg);
-  margin: 0 calc(-1 * var(--space-5));
-  padding: 0 var(--space-5);
-}
-
-.json-value-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-}
-
-.json-toggle {
-  width: 14px;
-  color: var(--text-tertiary);
-  font-size: 10px;
-  flex-shrink: 0;
-}
-
-.json-key {
-  color: var(--code-key);
-}
-
-.json-colon {
-  color: var(--text-tertiary);
-}
-
-.json-bracket {
-  color: var(--text-tertiary);
-}
-
-.json-preview {
-  color: var(--text-secondary);
-  font-style: italic;
-}
-
-.json-value {
-  flex-shrink: 0;
-}
-
-.json-string {
-  color: var(--status-success);
-}
-
-.json-number {
-  color: var(--tag-warning-fg);
-}
-
-.json-boolean {
-  color: var(--tag-danger-fg);
-}
-
-.json-null {
-  color: var(--text-tertiary);
-  font-style: italic;
-}
-
-.copy-path-btn {
-  padding: 0 var(--space-1) !important;
-  height: 20px !important;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-
-.json-node:hover .copy-path-btn {
-  opacity: 1;
 }
 </style>
