@@ -61,8 +61,17 @@ async function importCurl() {
   const result = fromCurl(text.value)
   warnings.value = result.warnings
   const draft = result.request
+  // cURL commands often carry no usable name (parser defaults to
+  // "Imported cURL") — appending a counter keeps repeat imports from
+  // colliding with the previous one.
+  const baseName = draft.name || 'Imported cURL'
+  let name = baseName
+  let n = 2
+  while (collStore.requestList.some(r => r.folderId === destinationFolder.value && r.name.trim() === name.trim())) {
+    name = `${baseName} ${n++}`
+  }
   const created = await collStore.createRequest(destinationFolder.value, {
-    name: draft.name,
+    name,
     method: draft.method,
     url: draft.url,
     headers: draft.headers,
@@ -263,7 +272,17 @@ async function onImport() {
       await importOpenApi()
     }
   } catch (e: any) {
-    error.value = e?.message ?? (mode.value === 'curl' ? 'Could not parse cURL command' : 'Import failed')
+    // The store throws machine codes like "requestNameConflict:<name>" —
+    // translate them instead of leaking the raw key to the user.
+    const raw = String(e?.message ?? '')
+    const conflict = raw.match(/^(requestNameConflict|folderNameConflict):([\s\S]+)$/)
+    if (conflict) {
+      error.value = (conflict[1] === 'folderNameConflict'
+        ? t.value.folderNameExists
+        : t.value.requestNameExists) + `: ${conflict[2]}`
+    } else {
+      error.value = raw || (mode.value === 'curl' ? 'Could not parse cURL command' : 'Import failed')
+    }
   }
 }
 

@@ -103,6 +103,15 @@ describe('pm.expect assertions', () => {
     expect(fail[0].error).toContain('length')
   })
 
+  it('empty fails on non-emptiable values (numbers / booleans), matching chai', async () => {
+    const num = await run(`pm.test('n', () => pm.expect(1).to.be.empty)`)
+    expect(num[0].passed).toBe(false)
+    expect(num[0].error).toContain('to be empty')
+
+    const bool = await run(`pm.test('b', () => pm.expect(true).to.be.empty)`)
+    expect(bool[0].passed).toBe(false)
+  })
+
   it('include works on strings and object keys', async () => {
     const tests = await run(`const data = pm.response.json(); pm.test('i', () => {
       pm.expect(pm.response.text()).to.include('users')

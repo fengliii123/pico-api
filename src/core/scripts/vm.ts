@@ -480,6 +480,9 @@ export function createPmApi(
             if (actual.length !== 0) return fail(`expected value of length ${actual.length} to be empty`)
           } else if (typeof actual === 'object') {
             if (Object.keys(actual).length !== 0) return fail('expected object to be empty')
+          } else {
+            // numbers / booleans can never be empty (chai semantics)
+            return fail(`expected ${show(actual)} to be empty`)
           }
           return undefined
         },
