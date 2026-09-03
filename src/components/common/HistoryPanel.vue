@@ -19,6 +19,10 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:open', value: boolean): void
+  // Fired after runEntry() has loaded the entry into the draft — the
+  // parent (AppLayout) uses it to actually SEND, so "Re-run" both loads
+  // and fires, matching the button's name.
+  (e: 'run'): void
 }>()
 
 const reqStore = useRequestStore()
@@ -142,6 +146,7 @@ function runEntry(entry: HistoryEntry) {
   if (patch.body) reqStore.setBody(patch.body)
   resStore.setActive(null)
   emit('update:open', false)
+  emit('run')
 }
 
 async function deleteEntry(id: string) {

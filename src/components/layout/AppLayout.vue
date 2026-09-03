@@ -3,7 +3,7 @@
 // (request editor + response panel).
 // On mount, loads collection data from IndexedDB and seeds an empty draft.
 
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { Button } from 'ant-design-vue'
 import { ImportOutlined, ExportOutlined, HistoryOutlined, ThunderboltOutlined, SettingOutlined } from '@ant-design/icons-vue'
 import CollectionTree from '@/components/tree/CollectionTree.vue'
@@ -62,6 +62,12 @@ onMounted(async () => {
 const requestEditor = ref<InstanceType<typeof RequestEditor> | null>(null)
 function onResend() {
   requestEditor.value?.send?.()
+}
+
+// History "Re-run": runEntry() has already loaded the entry into the
+// draft; give the editor a tick to bind, then fire it.
+function onHistoryRun() {
+  nextTick(() => requestEditor.value?.send?.())
 }
 
 // First-run seed: a small Examples folder so a brand-new user opens the
@@ -201,7 +207,7 @@ const logoSrc = computed(() => {
     </main>
     <ApiImportModal v-model:open="importOpen" />
     <ExportModal v-model:open="exportOpen" />
-    <HistoryPanel v-model:open="historyOpen" />
+    <HistoryPanel v-model:open="historyOpen" @run="onHistoryRun" />
     <TemplateModal v-model:open="templateOpen" />
     <SettingsModal v-model:open="settingsOpen" />
     <CommandPalette
