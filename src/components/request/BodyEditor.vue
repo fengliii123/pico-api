@@ -15,6 +15,7 @@ import type {
 } from '@/core/types'
 import { useI18n } from '@/i18n/useI18n'
 import { fmt } from '@/i18n'
+import { escapeHtml, highlightJsonLike } from '@/utils/highlight'
 
 const { t } = useI18n()
 const props = defineProps<{
@@ -265,31 +266,11 @@ function prettyXmlText() {
 }
 
 // JSON syntax highlighter for the raw editor overlay. Mirrors the
-// ResponseBodyRenderer implementation token-for-token (key/string/number/
-// keyword/punctuation) so request body and response body look identical.
 // We can't reuse CodeMirror here — @codemirror/lang-javascript's dist
 // bundle is corrupted on this machine (npm reinstall doesn't help —
 // some macOS-level process compresses the file), so we fall back to a
-// textarea + transparent overlay technique.
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
-function highlightJsonLike(s: string): string {
-  const re = /("(?:\\.|[^"\\])*"\s*:?)|(\b(?:true|false)\b)|(\bnull\b)|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|([{}\[\],])/g
-  return escapeHtml(s).replace(re, (_m, str, bool, nul, num, punct) => {
-    if (str !== undefined) {
-      const isKey = /:\s*$/.test(str.replace(/&quot;/g, '"'))
-      return isKey
-        ? `<span class="tk-key">${str}</span>`
-        : `<span class="tk-str">${str}</span>`
-    }
-    if (bool !== undefined) return `<span class="tk-kw">${bool}</span>`
-    if (nul !== undefined) return `<span class="tk-kw">${nul}</span>`
-    if (num !== undefined) return `<span class="tk-num">${num}</span>`
-    if (punct !== undefined) return `<span class="tk-punc">${punct}</span>`
-    return _m
-  })
-}
+// textarea + transparent overlay technique with the shared highlighter
+// (same tokens as the response panel).
 const highlightedRaw = computed(() => {
   // XML / Text mode: no tokenization, just escape so the overlay shows
   // the same text safely. JSON path uses the same highlighter as the

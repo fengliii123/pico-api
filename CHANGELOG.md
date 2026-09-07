@@ -4,6 +4,59 @@ All notable changes to Pico API are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.8] — 2026-09-08
+
+Correctness and hardening release (full code review pass).
+
+### Fixed
+
+- **Extension network errors were mislabeled as CORS.** A "Failed to fetch"
+  that went through the background service worker (where CORS cannot
+  happen) surfaced as "Blocked by CORS"; it now reports a connectivity
+  problem with an accurate message.
+- **cURL import: unknown flags swallowed the URL.** `curl --http1.1
+  https://…` consumed the URL as the flag's value and failed with "No URL
+  found". Unknown flags no longer eat URL-looking tokens.
+- **cURL import: non-Latin1 Basic credentials crashed the import.** `-u
+  "user:密码"` hit `btoa`'s Latin1 limit; credentials are now UTF-8 encoded
+  (request Basic auth had the same latent bug — fixed there too).
+- **cURL import: a bare `%` in urlencoded bodies crashed decoding.** Values
+  like "50% off" now import as-is instead of throwing `URIError`.
+- **Streaming + multipart body was sent garbled.** The streaming bridge
+  path didn't rebuild the base64-transported Blob body the way the normal
+  path does.
+- **Streaming responses reported the wrong size** for multi-byte content
+  (character count instead of byte count) and built the response Blob
+  twice.
+- **The streaming UI ignored an `Accept: text/event-stream` header**
+  written with canonical casing (lookup was lowercase-only).
+- `pm.expect().to.eql`: `NaN` now equals `NaN`, and cyclic structures no
+  longer hang the script.
+- `pm.sendRequest` sub-requests now honor Cancel and the browser-cookie
+  setting, consistent with the main request.
+
+### Changed
+
+- The background service worker validates message and port senders before
+  proxying fetches (defense-in-depth for the privileged relay).
+- API import modal: preview tags ("operations / tags / duplicates
+  skipped") are localized instead of hardcoded Chinese; the live preview
+  re-parse moved out of a side-effecting computed into a watch.
+- JSON / URL syntax highlighting unified into one shared implementation
+  (`src/utils/highlight.ts`) so request body, response body, and the URL
+  overlay cannot drift apart again.
+- Added unit tests for cURL flag parsing, non-Latin1 Basic auth,
+  urlencoded fallback, and error classification (privileged vs direct).
+
+### Removed
+
+- 49 unused i18n keys (en/zh), including one advertising a "Postman
+  Collection" import the app does not have.
+- Dead `inflightStreaming` map, stray `executeStreaming` debug logs, and
+  the unused `@codemirror/theme-one-dark` / `@types/js-yaml` dependencies.
+  `@codemirror/language` and `@codemirror/autocomplete` are now declared
+  dependencies (they were riding transitive resolution).
+
 ## [1.0.7] — 2026-09-03
 
 Feature, retention, and performance release.

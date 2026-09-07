@@ -125,17 +125,20 @@ async function seedBaseUrlIntoEnvironment(value: string) {
 
 // Live preview — re-parses as the user types so the count + conflict
 // summary stays in sync. Failures land in `error` instead of throwing.
-const openApiPreview = computed(() => {
-  if (mode.value !== 'openapi') return null
-  if (!text.value.trim()) return null
+const openApiPreview = ref<ReturnType<typeof parseOpenApi> | null>(null)
+watch([mode, text], () => {
+  if (mode.value !== 'openapi' || !text.value.trim()) {
+    openApiPreview.value = null
+    return
+  }
   try {
     const result = parseOpenApi(text.value)
     error.value = ''
     warnings.value = result.warnings
-    return result
+    openApiPreview.value = result
   } catch (e: any) {
     error.value = e?.message ?? t.value.couldNotParse
-    return null
+    openApiPreview.value = null
   }
 })
 
@@ -589,9 +592,9 @@ function cancelNewFolder() {
     <!-- OpenAPI live preview -->
     <div v-if="mode === 'openapi' && openApiPreview" class="import-preview">
       <div class="preview-summary">
-        <Tag color="blue">{{ openApiPreview.operations.length }} 接口</Tag>
-        <Tag color="orange">{{ tagCounts.length }} 标签</Tag>
-        <Tag v-if="conflictCount > 0" color="red">{{ conflictCount }} 重复跳过</Tag>
+        <Tag color="blue">{{ openApiPreview.operations.length }} {{ t.unitOperations }}</Tag>
+        <Tag color="orange">{{ tagCounts.length }} {{ t.unitTags }}</Tag>
+        <Tag v-if="conflictCount > 0" color="red">{{ conflictCount }} {{ t.duplicatesSkipped }}</Tag>
       </div>
       <div v-if="tagCounts.length > 0" class="preview-tags">
         <span v-for="[tag, count] in tagCounts" :key="tag" class="preview-tag-row">
@@ -618,7 +621,7 @@ function cancelNewFolder() {
       <Button @click="open = false">{{ t.cancel }}</Button>
       <Button type="primary" :disabled="!text.trim()" @click="onImport">
         <template #icon><PlusOutlined /></template>
-        {{ mode === 'openapi' && willImportCount > 0 ? `${t.import} ${willImportCount} 接口` : t.import }}
+        {{ mode === 'openapi' && willImportCount > 0 ? `${t.import} ${willImportCount} ${t.unitOperations}` : t.import }}
       </Button>
     </div>
   </Modal>

@@ -7,6 +7,7 @@ import { extractResourceTiming } from '../core/timing'
 import { readCappedResponseBodyForBridge } from '../core/fetchResponseBody'
 import { maxResponseBytes } from '../core/responseSize'
 import { mergeAbortSignals } from '../core/abortSignals'
+import { base64ToBytes } from '../core/binaryTransport'
 import { parseSetCookies } from '../core/cookies'
 import type { ParsedCookie } from '../core/cookies'
 
@@ -33,15 +34,12 @@ interface FetchStreamingPayload {
 
 type InboundMessage = FetchPayload | FetchAbortPayload | FetchStreamingPayload
 
-// In-flight fetch abort handles — keyed by the bridge message id.
+// In-flight fetch abort handles — keyed by the bridge message id. Covers
+// both plain and streaming fetches (both register an AbortController here).
 const inflightFetches = new Map<string, AbortController>()
-// In-flight streaming controllers — keyed by id.
-const inflightStreaming = new Map<string, ReadableStreamDefaultController<any>>()
 
 function abortInflightFetch(id: string): void {
   inflightFetches.get(id)?.abort()
-  inflightStreaming.get(id)?.close()
-  inflightStreaming.delete(id)
 }
 
 interface ResponsePayload extends Omit<ResponseResult, 'body'> {
@@ -59,6 +57,7 @@ const c = (globalThis as any).chrome as
   | undefined
   | {
       runtime: {
+        id: string
         onMessage: {
           addListener: (cb: (msg: any, sender: any, sendResponse: (r: any) => void) => any) => void
         }
@@ -75,6 +74,21 @@ const c = (globalThis as any).chrome as
         getAll: (details: { url: string }) => Promise<Array<{ name: string; value: string }>>
       }
     }
+
+// Rebuild a Blob body that the options page base64-encoded for transport
+// (chrome.runtime.sendMessage can't carry Blob directly — it flattens to
+// {}). Other body shapes (string, undefined) pass through untouched.
+function transportBodyToInit(req: BridgeNormalizedRequest): BodyInit | undefined {
+  if (req._bodyIsBlob && typeof req.body === 'string') {
+    // Uint8Array.from narrows to a plain ArrayBuffer-backed view, which
+    // the DOM BlobPart type demands.
+    return new Blob([Uint8Array.from(base64ToBytes(req.body))], {
+      type: req._bodyContentType || 'application/octet-stream'
+    })
+  }
+  if (req.body !== undefined) return req.body as BodyInit
+  return undefined
+}
 
 // Read the browser's cookie jar for the target URL and build a Cookie
 // header. Returns null if there are no cookies or the chrome.cookies API
@@ -115,17 +129,8 @@ async function runFetch(payload: FetchPayload): Promise<{ ok: true; result: Resp
     }
 
     // Reconstruct Blob body if the options page base64-encoded it for
-    // transport (sendMessage can't carry Blob directly). Other body
-    // shapes (string, undefined) pass through untouched.
-    let body: BodyInit | undefined
-    if (payload.req._bodyIsBlob && typeof payload.req.body === 'string') {
-      const binary = atob(payload.req.body)
-      const bytes = new Uint8Array(binary.length)
-      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-      body = new Blob([bytes], { type: payload.req._bodyContentType || 'application/octet-stream' })
-    } else if (payload.req.body !== undefined) {
-      body = payload.req.body as BodyInit
-    }
+    // transport (sendMessage can't carry Blob directly).
+    const body = transportBodyToInit(payload.req)
 
     const init: RequestInit = {
       method: payload.req.method,
@@ -232,8 +237,12 @@ async function runStreamingFetch(
       redirect: payload.req.settings?.followRedirects === false ? 'manual' : 'follow',
       signal: cancelCtrl.signal
     }
-    if (payload.req.body !== undefined) {
-      init.body = payload.req.body as BodyInit
+    // Same Blob-body reconstruction as the non-streaming path — without
+    // it, a multipart body arrives as its base64 string and goes on the
+    // wire garbled.
+    const streamBody = transportBodyToInit(payload.req)
+    if (streamBody !== undefined) {
+      init.body = streamBody
     }
 
     const res = await fetch(payload.req.url, init)
@@ -297,7 +306,6 @@ async function runStreamingFetch(
   } catch (e: any) {
     port?.postMessage({ type: 'error', message: e?.message ?? 'Network error', errorKind: e?.name === 'AbortError' ? 'aborted' : 'unknown' })
     port?.disconnect()
-    inflightStreaming.delete(payload.id)
 
     const err: ResponseError = {
       message: e?.name === 'AbortError' ? 'Request aborted' : (e?.message ?? 'Network error'),
@@ -314,8 +322,12 @@ async function runStreamingFetch(
 const streamingPorts = new Map<string, any>()
 
 if (c) {
-  // Listen for streaming connections.
+  // Listen for streaming connections. Sender is checked so a hostile or
+  // compromised context can't open a fetch relay — without
+  // externally_connectable, only our own extension pages should ever
+  // arrive here, but the check makes that guarantee explicit.
   c.runtime.onConnect.addListener((port: any) => {
+    if (port?.sender?.id !== c.runtime.id) return
     const id = port.name
     if (id) {
       streamingPorts.set(id, port)
@@ -326,7 +338,11 @@ if (c) {
     }
   })
 
-  c.runtime.onMessage.addListener((msg: InboundMessage, _sender: any, sendResponse: (r: any) => void) => {
+  c.runtime.onMessage.addListener((msg: InboundMessage, sender: any, sendResponse: (r: any) => void) => {
+    // Only accept messages from our own extension contexts. This SW holds
+    // <all_urls> host + cookie privileges — never proxy fetches for anyone
+    // else, even though only internal senders can normally reach us.
+    if (sender?.id !== c.runtime.id) return
     // Returning true keeps the channel open while we await sendResponse.
     ;(async () => {
       const reply = await dispatch(msg)

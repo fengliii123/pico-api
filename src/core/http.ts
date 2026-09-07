@@ -67,7 +67,9 @@ export function normalize(
     const prefix = resolved.auth.prefix || 'Bearer'
     finalHeaders['Authorization'] = `${prefix} ${resolved.auth.token}`
   } else if (resolved.auth.type === 'basic') {
-    const encoded = btoa(`${resolved.auth.username}:${resolved.auth.password}`)
+    // btoa() throws on non-Latin1 (e.g. CJK passwords) — encode via UTF-8
+    // bytes instead, which is also the correct wire format for Basic auth.
+    const encoded = bytesToBase64(new TextEncoder().encode(`${resolved.auth.username}:${resolved.auth.password}`))
     finalHeaders['Authorization'] = `Basic ${encoded}`
   } else if (resolved.auth.type === 'apikey' && resolved.auth.addTo === 'query') {
     const { key, value, prefix } = resolved.auth
@@ -150,7 +152,14 @@ function escapeQuotes(s: string): string {
 // Best-effort classification of fetch() rejections (AbortError vs CORS vs local connectivity).
 export type ErrorKind = 'cors' | 'dns' | 'connect' | 'tls' | 'timeout' | 'aborted' | 'unknown'
 
-function classifyFetchError(e: any, url: string): { kind: ErrorKind; message: string } {
+// `privileged: true` describes fetches made through the background service
+// worker, where CORS simply doesn't apply — a "Failed to fetch" there is a
+// connectivity problem, never a CORS block. Exported for unit tests.
+export function classifyFetchError(
+  e: any,
+  url: string,
+  opts: { privileged?: boolean } = {}
+): { kind: ErrorKind; message: string } {
   if (e?.name === 'AbortError') {
     return { kind: 'aborted', message: 'Request aborted' }
   }
@@ -168,6 +177,12 @@ function classifyFetchError(e: any, url: string): { kind: ErrorKind; message: st
       return {
         kind: 'connect',
         message: 'Could not reach the server. Is it running on ' + host + '?'
+      }
+    }
+    if (opts.privileged) {
+      return {
+        kind: 'connect',
+        message: `Could not reach ${host || 'the server'} — the request left the extension but got no response (DNS, network, or the host may be down).`
       }
     }
     return {
@@ -333,8 +348,9 @@ async function executeViaBridge(req: NormalizedRequest, opts: ExecuteOptions): P
     }
   }
   // The bridge returned an error payload — refine based on the URL just
-  // like the direct-fetch path does.
-  const refined = classifyFetchError({ name: 'TypeError', message: reply.error.originalMessage }, req.url)
+  // like the direct-fetch path does. The SW fetch is privileged (no CORS),
+  // so its "Failed to fetch" must never surface as a CORS message.
+  const refined = classifyFetchError({ name: 'TypeError', message: reply.error.originalMessage }, req.url, { privileged: true })
   throw {
     ...reply.error,
     message: reply.error.errorKind === 'aborted' ? reply.error.message : refined.message,
@@ -410,7 +426,6 @@ async function executeStreamingViaBridge(
   port = chrome.runtime.connect({ name: id })
 
   let chunkCount = 0
-  console.log('[executeStreaming] Bridge: Starting stream for', req.url)
 
   port.onMessage.addListener((msg: any) => {
     if (msg.type === 'headers') {
@@ -427,12 +442,12 @@ async function executeStreamingViaBridge(
       if (msg.truncated) {
         fullText += streamTruncationNotice(req.settings?.maxResponseSize)
       }
-      console.log('[executeStreaming] Bridge: done, chunkCount:', chunkCount, 'isStreaming:', chunkCount > 1)
+      const blob = new Blob([fullText], { type: mime })
       resolve({
         status,
         statusText,
         headers,
-        body: { blob: new Blob([fullText], { type: mime }), text: fullText, size: fullText.length },
+        body: { blob, text: fullText, size: blob.size },
         time,
         mime,
         timing: undefined,
@@ -638,8 +653,6 @@ async function executeStreamingDirect(
   const maxBytes = maxResponseBytes(req.settings?.maxResponseSize)
   let received = 0
   let truncated = false
-  console.log('[executeStreaming] Direct: Starting stream for', req.url)
-  let lastLogTime = Date.now()
 
   try {
     while (true) {
@@ -647,10 +660,6 @@ async function executeStreamingDirect(
       if (done) break
 
       chunkCount++
-      if (Date.now() - lastLogTime > 500) {
-        console.log('[executeStreaming] Direct: chunk', chunkCount, 'received, length:', value?.length)
-        lastLogTime = Date.now()
-      }
       const remaining = maxBytes > 0 ? maxBytes - received : Infinity
       if (value.byteLength >= remaining) {
         // The cap falls inside this chunk: keep only the bytes within the
@@ -686,12 +695,12 @@ async function executeStreamingDirect(
   const timing = extractResourceTiming(req.url)
   const mime = res.headers.get('Content-Type') ?? ''
 
-  console.log('[executeStreaming] Direct: Done. chunkCount:', chunkCount, 'isStreaming:', chunkCount > 1)
+  const blob = new Blob([fullText], { type: mime })
   return {
     status: res.status,
     statusText: res.statusText,
     headers,
-    body: { blob: new Blob([fullText], { type: mime }), text: fullText, size: new Blob([fullText]).size },
+    body: { blob, text: fullText, size: blob.size },
     time: Math.round(t1 - t0),
     mime,
     timing,

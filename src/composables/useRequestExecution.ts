@@ -137,9 +137,15 @@ export function useRequestExecution() {
     }
   }
 
+  // Current send's abort signal — set at the top of send() so the
+  // pm.sendRequest executor below can be cancelled with the main request.
+  let currentSignal: AbortSignal | null = null
+
   // Executor handed to pm.sendRequest: a plain GET through the same
   // normalize/execute pipeline the Send button uses, so it respects the
-  // extension bridge (no CORS) and dev-mode direct fetch alike.
+  // extension bridge (no CORS) and dev-mode direct fetch alike. Cookie
+  // forwarding follows the same setting as the main request, and Cancel
+  // aborts sub-requests too.
   const sendRequestExecutor: SendRequestExecutor = async (url) => {
     const normalized = normalize({
       id: null,
@@ -154,7 +160,10 @@ export function useRequestExecution() {
       scripts: { preRequest: '', postResponse: '' },
       settings: defaultRequestSettings()
     } as DraftRequest)
-    const res = await execute(normalized)
+    const res = await execute(normalized, {
+      signal: currentSignal ?? undefined,
+      sendBrowserCookies: settingsStore.sendBrowserCookies
+    })
     const headers: Record<string, string> = {}
     for (const [k, v] of res.headers) headers[k.toLowerCase()] = v
     return {
@@ -259,6 +268,7 @@ export function useRequestExecution() {
     inflightAbort?.abort()
     inflightAbort = new AbortController()
     const { signal } = inflightAbort
+    currentSignal = signal
 
     // Pre-validate URL before scripts run (so scripts don't modify an
     // invalid URL). Variables are NOT fully checked yet — the pre-request
@@ -341,7 +351,11 @@ export function useRequestExecution() {
         return
       }
 
-      resStore.setStreaming(normalized.headers?.['accept'] ?? '')
+      // Header keys keep the user's casing (processHeaders doesn't
+      // normalize), so the Accept lookup must be case-insensitive.
+      const acceptValue =
+        Object.entries(normalized.headers).find(([k]) => k.toLowerCase() === 'accept')?.[1] ?? ''
+      resStore.setStreaming(acceptValue)
 
       const onChunk: StreamChunkHandler = (text) => {
         resStore.appendStreamChunk(text)

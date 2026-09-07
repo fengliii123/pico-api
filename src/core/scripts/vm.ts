@@ -103,15 +103,24 @@ export interface Assertion {
 }
 
 // Structural deep-equality for pm.expect().to.eql — keys are compared
-// order-insensitively; arrays must have the same length and items.
-function deepEqual(a: any, b: any): boolean {
+// order-insensitively; arrays must have the same length and items. NaN
+// equals NaN (unlike ===), and already-visited objects are treated as
+// equal so cyclic structures terminate instead of hanging the script.
+function deepEqual(a: any, b: any, seen?: WeakSet<object>): boolean {
   if (a === b) return true
+  if (typeof a === 'number' && typeof b === 'number') {
+    return Number.isNaN(a) && Number.isNaN(b)
+  }
   if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') return false
   if (Array.isArray(a) !== Array.isArray(b)) return false
+  if (seen?.has(a) || seen?.has(b)) return true
+  const s = seen ?? new WeakSet()
+  s.add(a)
+  s.add(b)
   const ka = Object.keys(a)
   const kb = Object.keys(b)
   if (ka.length !== kb.length) return false
-  return ka.every(k => deepEqual(a[k], b[k]))
+  return ka.every(k => deepEqual(a[k], b[k], s))
 }
 
 function typeName(v: any): string {
@@ -614,6 +623,10 @@ export async function runScriptDirect(
     const fn = new Function('pm', 'console', script)
     await fn(pm, proxiedConsole)
   } catch (e: any) {
+    // Deliberate Postman parity: a throwing script does NOT abort the
+    // request. The error lands in the script console as a log line and
+    // execution continues — so we swallow it here on purpose and the
+    // caller never sees a rejection from script failures.
     logs.push(`[Script Error] ${e?.message ?? String(e)}`)
     onLog?.(`[Script Error] ${e?.message ?? String(e)}`)
   }

@@ -16,6 +16,7 @@ import { useUndoRedoStore } from '@/stores/undoRedo'
 import { useResponseStore } from '@/stores/response'
 import { processHeaders } from '@/core/headers'
 import { deepClone } from '@/utils/clone'
+import { escapeHtml } from '@/utils/highlight'
 import { useRequestExecution } from '@/composables/useRequestExecution'
 import type { KeyValueRow, FormDataRow, RequestBody, HttpMethod, SavedRequest, AuthConfig, RequestScripts, RequestSettings } from '@/core/types'
 import { useI18n } from '@/i18n/useI18n'
@@ -96,13 +97,9 @@ const urlHighlightHtml = computed(() => {
   // has nothing behind it.
   if (!raw) return '&nbsp;'
   // Escape HTML first so user-typed <, >, & don't break the overlay.
-  const escaped = raw
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
   // Then wrap {{var}} occurrences. Whitespace inside {{ }} is allowed
   // (matches the resolver in core/variables).
-  return escaped.replace(URL_VAR_RE, (_, name: string) =>
+  return escapeHtml(raw).replace(URL_VAR_RE, (_, name: string) =>
     `<span class="url-var">{{${name}}}</span>`)
 })
 

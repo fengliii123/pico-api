@@ -7,7 +7,8 @@ import type {
   DraftRequest,
   KeyValueRow,
   RequestBody as AppRequestBody,
-  HttpMethod
+  HttpMethod,
+  FormDataRow
 } from '@/core/types'
 import type {
   OpenApiDocument,
@@ -295,14 +296,13 @@ function buildDraftRequest(
 // Pick a sensible default value for a parameter or schema. Falls back to
 // an empty string so the resulting row is editable.
 function pickExampleOrPlaceholder(schema: Schema | Parameter): string {
-  const s = schema as any
-  if (s.example !== undefined) return stringifyExample(s.example)
-  if (s.default !== undefined) return String(s.default)
-  if (Array.isArray(s.enum) && s.enum.length > 0) return String(s.enum[0])
+  if (schema.example !== undefined) return stringifyExample(schema.example)
+  if (schema.default !== undefined) return String(schema.default)
+  if (Array.isArray(schema.enum) && schema.enum.length > 0) return String(schema.enum[0])
   // For boolean / number schemas, give a typed placeholder so the user
   // knows the expected shape.
-  if (s.type === 'boolean') return 'false'
-  if (s.type === 'integer' || s.type === 'number') return '0'
+  if (schema.type === 'boolean') return 'false'
+  if (schema.type === 'integer' || schema.type === 'number') return '0'
   return ''
 }
 
@@ -362,11 +362,11 @@ function schemaToKeyValueRows(schema?: Schema): KeyValueRow[] {
 // Convert an object schema into FormDataRow[] (used for multipart body).
 // Files end up as text rows since OpenAPI can't carry the file binary
 // — the user re-attaches after import.
-function schemaToFormRows(schema?: Schema): any[] {
+function schemaToFormRows(schema?: Schema): FormDataRow[] {
   if (!schema?.properties) return []
-  const rows: any[] = []
+  const rows: FormDataRow[] = []
   for (const [k, sub] of Object.entries(schema.properties)) {
-    const isFile = (sub as any).format === 'binary' || (sub as any).type === 'file'
+    const isFile = sub.format === 'binary' || sub.type === 'file'
     rows.push({
       key: k,
       kind: isFile ? 'file' : 'text',
@@ -387,8 +387,7 @@ function schemaExample(schema?: Schema): unknown {
   if (schema.properties) {
     const obj: Record<string, unknown> = {}
     for (const [k, sub] of Object.entries(schema.properties)) {
-      const s = sub as any
-      obj[k] = s.example ?? s.default ?? (Array.isArray(s.enum) && s.enum.length ? s.enum[0] : defaultValueForType(s))
+      obj[k] = sub.example ?? sub.default ?? (Array.isArray(sub.enum) && sub.enum.length ? sub.enum[0] : defaultValueForType(sub))
     }
     return obj
   }

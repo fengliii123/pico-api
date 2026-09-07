@@ -19,6 +19,7 @@
 
 import { parse as shellParse } from 'shell-quote'
 import type { DraftRequest, KeyValueRow, RequestBody, HttpMethod, FormDataRow, SavedRequest, EnvironmentVariable } from './types'
+import { bytesToBase64 } from './binaryTransport'
 import { defaultRequestSettings } from './defaults'
 import { normalize } from './http'
 import { extractParamsFromUrl } from './url'
@@ -206,9 +207,9 @@ export function fromCurl(cmd: string): CurlImportResult {
     } else if (flag === '-u' || flag === '--user') {
       const v = next()
       if (v) {
-        // btoa is available in browser context (and SW). Use it directly
-        // — no need for the Node Buffer fallback that was here before.
-        const auth = 'Basic ' + btoa(v)
+        // btoa() throws on non-Latin1 credentials (CJK passwords etc.) —
+        // encode UTF-8 bytes first, which is also the correct wire format.
+        const auth = 'Basic ' + bytesToBase64(new TextEncoder().encode(v))
         headers.push({ key: 'Authorization', value: auth, enabled: true })
       }
     } else if (flag === '-L' || flag === '--location' ||
@@ -223,9 +224,11 @@ export function fromCurl(cmd: string): CurlImportResult {
       if (v && !url) url = v
     } else if (flag.startsWith('-')) {
       // Unknown flag — try to consume a value if the next token doesn't
-      // look like a flag. Some users pass options like --connect-timeout 5.
+      // look like a flag or a URL. Some users pass options like
+      // --connect-timeout 5; others like --http1.1 directly precede the
+      // URL, which must survive as the request target.
       const nx = tokens[i + 1]
-      if (typeof nx === 'string' && !nx.startsWith('-')) i++
+      if (typeof nx === 'string' && !nx.startsWith('-') && !/^[a-z][a-z0-9+.-]*:\/\//i.test(nx)) i++
       warnings.push(`Ignored unsupported flag: ${flag}`)
     }
   }
@@ -280,13 +283,18 @@ export function inferBody(headers: KeyValueRow[], rawBody: string, hasBody: bool
   const ct = headers.find(h => h.key.toLowerCase() === 'content-type')?.value ?? ''
 
   if (ct.includes('application/x-www-form-urlencoded') && rawBody) {
-    // Decode k=v&k2=v2 into rows.
+    // Decode k=v&k2=v2 into rows. A bare '%' (e.g. "50% off") makes
+    // decodeURIComponent throw — fall back to the raw token so the import
+    // still lands and the user can fix it in the editor.
+    const safeDecode = (s: string) => {
+      try { return decodeURIComponent(s) } catch { return s }
+    }
     const urlencoded: KeyValueRow[] = rawBody.split('&').map(pair => {
       const eq = pair.indexOf('=')
-      if (eq < 0) return { key: decodeURIComponent(pair), value: '', enabled: true }
+      if (eq < 0) return { key: safeDecode(pair), value: '', enabled: true }
       return {
-        key: decodeURIComponent(pair.slice(0, eq)),
-        value: decodeURIComponent(pair.slice(eq + 1)),
+        key: safeDecode(pair.slice(0, eq)),
+        value: safeDecode(pair.slice(eq + 1)),
         enabled: true
       }
     })

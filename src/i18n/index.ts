@@ -80,20 +80,13 @@ export interface Translations {
   environments: string
   globals: string
   noEnvironment: string
-  addVariable: string
-  importEnv: string
-  exportEnv: string
 
   // History
   history: string
   clearHistory: string
-  noHistory: string
 
   // Templates
   templates: string
-  oauthTemplate: string
-  graphqlTemplate: string
-  webhookTemplate: string
 
   // Settings
   settings: string
@@ -106,14 +99,14 @@ export interface Translations {
   deleted: string
   copied: string
   imported: string
+  unitOperations: string
+  unitTags: string
+  duplicatesSkipped: string
   exported: string
   error: string
   success: string
   warning: string
-  noRequests: string
-  noFolders: string
   enterUrl: string
-  unresolvedVariables: string
 
   // HTTP Methods
   GET: string
@@ -131,25 +124,15 @@ export interface Translations {
 
   // Empty states
   sendRequest: string
-  selectEnvironment: string
   createFolder: string
-  importCollection: string
-  startFresh: string
 
   // Quick start
-  welcome: string
   tryExample: string
-  quickTips: string
 
 
   // Sidebar / nav
-  openFullPage: string
-  toggleSidebar: string
-  commandPalette: string
-  requestTemplates: string
   historyTitle: string
   importApi: string
-  exportApi: string
 
   // Common labels
   key: string
@@ -159,7 +142,6 @@ export interface Translations {
   scope: string
   folder: string
   preview: string
-  cancel2: string
 
   // KV table
   addRow: string
@@ -167,19 +149,13 @@ export interface Translations {
   noHeadersHint: string
   browseHeaders: string
   browseValues: string
-  parameterName: string
   headerName: string
 
   // Body editor
-  bodyModeNone: string
   bodyModeUrlencoded: string
   bodyModeFormdata: string
   bodyModeRaw: string
-  bodyRawJson: string
-  bodyRawXml: string
-  bodyRawText: string
   methodNoBodyHint: string
-  noBodyHint: string
   fieldName: string
   textValue: string
   fileButton: string
@@ -201,9 +177,6 @@ export interface Translations {
 
   // RequestEditor
   unsavedChanges: string
-  unsupportedProtocol: string
-  invalidUrlHostname: string
-  invalidUrl: string
   nothingToDuplicate: string
 
   // ResponsePanel
@@ -219,11 +192,6 @@ export interface Translations {
   pdfPreview: string
   binaryData: string
   noResponseBody: string
-  corsError: string
-  dnsError: string
-  connectError: string
-  tlsError: string
-  timeoutError: string
   requestCancelled: string
   originalError: string
   serverError: string
@@ -242,7 +210,6 @@ export interface Translations {
   noFoldersYet: string
   createFolderHint: string
   selectedCount: string
-  selectBatchHint: string
   unfiledRoot: string
   filterFolders: string
   noMatchingFolders: string
@@ -255,7 +222,6 @@ export interface Translations {
   noVariablesHint: string
   noGlobalsHint: string
   selectEnvironmentHint: string
-  deleteConfirm: string
   deleteWarning: string
 
   // Import modal
@@ -266,7 +232,6 @@ export interface Translations {
   pasteOpenapiHint: string
   headsUp: string
   importFromUrl: string
-  fetchingUrl: string
   newFolderName: string
   invalidImportUrl: string
   apifox: string
@@ -283,7 +248,6 @@ export interface Translations {
   exportScopeFolder: string
   exportScopeCollection: string
   descriptionOptional: string
-  exportPreview: string
 
   // History panel
   searchUrlName: string
@@ -318,17 +282,10 @@ export interface Translations {
   selectHint: string
   closeHint: string
   cmdNew: string
-  cmdManageEnvs: string
   cmdImport: string
   cmdExport: string
-  cmdTheme: string
-  cmdDuplicate: string
 
   // Quick start
-  getStartedHint: string
-  tryExampleDescription: string
-  importDescription: string
-  startFreshDescription: string
 
   // Empty state
   nothingHereYet: string
@@ -356,7 +313,6 @@ export interface Translations {
 
   onboardingTitle: string
   onboardingBody: string
-  gotIt: string
   skip: string
   examplesFolderName: string
   exampleGetUser: string
@@ -456,7 +412,6 @@ export interface Translations {
   importedRequestsSummary: string
   skippedDuplicatesSummary: string
   loadedFileName: string
-  createdTemplate: string
 
   // Command palette / shortcuts
   cmdNewDesc: string
@@ -479,7 +434,6 @@ export interface Translations {
   shortcutSwitchEnvironment: string
   shortcutCloseModal: string
   optional: string
-  saveToCollection: string
   responseTestsTab: string
 
   // Misc placeholders
@@ -574,18 +528,11 @@ const en: Translations = {
   environments: 'Environments',
   globals: 'Globals',
   noEnvironment: 'No Environment',
-  addVariable: 'Add Variable',
-  importEnv: 'Import',
-  exportEnv: 'Export',
 
   history: 'History',
   clearHistory: 'Clear History',
-  noHistory: 'No history entries',
 
   templates: 'Templates',
-  oauthTemplate: 'OAuth 2.0',
-  graphqlTemplate: 'GraphQL',
-  webhookTemplate: 'Webhook',
 
   settings: 'Settings',
   autoSaveHistory: 'Auto-save to history',
@@ -596,14 +543,14 @@ const en: Translations = {
   deleted: 'Deleted',
   copied: 'Copied',
   imported: 'Imported',
+  unitOperations: 'operations',
+  unitTags: 'tags',
+  duplicatesSkipped: 'duplicates skipped',
   exported: 'Exported',
   error: 'Error',
   success: 'Success',
   warning: 'Warning',
-  noRequests: 'No requests',
-  noFolders: 'No folders yet',
   enterUrl: 'Please enter a URL',
-  unresolvedVariables: 'Unresolved variables',
 
   GET: 'GET',
   POST: 'POST',
@@ -619,21 +566,11 @@ const en: Translations = {
 
   sendRequest: 'Send a request to see the response',
   createFolder: 'Create a folder to get started',
-  importCollection: 'Import a collection',
-  startFresh: 'Start Fresh',
-  selectEnvironment: 'Select Environment',
 
-  welcome: 'Welcome to Pico API',
   tryExample: 'Try with Example',
-  quickTips: 'Quick tips',
 
-  openFullPage: 'Open full page',
-  toggleSidebar: 'Toggle sidebar',
-  commandPalette: 'Command Palette',
-  requestTemplates: 'Request Templates',
   historyTitle: 'Request History',
   importApi: 'Import API',
-  exportApi: 'Export as OpenAPI',
 
   key: 'Key',
   value: 'Value',
@@ -642,25 +579,18 @@ const en: Translations = {
   scope: 'Scope',
   folder: 'Folder',
   preview: 'Preview',
-  cancel2: 'Close',
 
   addRow: 'Add row',
   noParametersHint: 'This request has no parameters.',
   noHeadersHint: 'This request has no headers. Click + Add row to add one.',
   browseHeaders: 'Browse all common headers',
   browseValues: 'Browse suggested values',
-  parameterName: 'Parameter name',
   headerName: 'Header',
 
-  bodyModeNone: 'None',
   bodyModeUrlencoded: 'x-www-form-urlencoded',
   bodyModeFormdata: 'form-data',
   bodyModeRaw: 'raw',
-  bodyRawJson: 'JSON',
-  bodyRawXml: 'XML',
-  bodyRawText: 'Text',
   methodNoBodyHint: "doesn't carry a body. Switch to POST / PUT / PATCH to send a request body.",
-  noBodyHint: 'This request does not have a body.',
   fieldName: 'Field name',
   textValue: 'Text value',
   fileButton: 'File…',
@@ -681,9 +611,6 @@ const en: Translations = {
   requestBodyPlaceholder: 'Request body...',
 
   unsavedChanges: 'Unsaved changes',
-  unsupportedProtocol: 'Unsupported protocol — only http and https are allowed.',
-  invalidUrlHostname: 'Invalid URL — hostname is empty.',
-  invalidUrl: 'Invalid URL',
   nothingToDuplicate: 'Nothing to duplicate',
 
   sending: 'Sending...',
@@ -698,11 +625,6 @@ const en: Translations = {
   pdfPreview: 'PDF Preview',
   binaryData: 'Binary data',
   noResponseBody: 'No response body',
-  corsError: 'Blocked by CORS — the server did not include this origin in Access-Control-Allow-Origin.',
-  dnsError: "DNS lookup failed for the host.",
-  connectError: 'Could not reach the server.',
-  tlsError: 'TLS handshake failed (expired / self-signed cert?)',
-  timeoutError: 'Request timed out',
   requestCancelled: 'The request was cancelled.',
   originalError: 'Original error',
   serverError: 'Server error — the API failed to handle this request.',
@@ -720,7 +642,6 @@ const en: Translations = {
   noFoldersYet: 'No folders yet.',
   createFolderHint: 'Use the button above or right-click to create one.',
   selectedCount: 'selected',
-  selectBatchHint: 'Select multiple requests for batch operations',
   unfiledRoot: '— Unfiled (root) —',
   filterFolders: 'Filter folders…',
   noMatchingFolders: 'No matching folders',
@@ -732,7 +653,6 @@ const en: Translations = {
   noVariablesHint: 'No variables yet. Add one with + Add row.',
   noGlobalsHint: 'No global variables yet. Add one with + Add row.',
   selectEnvironmentHint: 'Select an environment or create a new one',
-  deleteConfirm: 'Delete',
   deleteWarning: 'This cannot be undone.',
 
   curl: 'cURL',
@@ -742,7 +662,6 @@ const en: Translations = {
   pasteOpenapiHint: 'Paste a JSON document (openapi: 3.x or swagger: 2.x). Each operation becomes a request; tags become folders.',
   headsUp: 'Heads up',
   importFromUrl: 'From URL',
-  fetchingUrl: 'Fetching…',
   newFolderName: 'New folder',
   invalidImportUrl: 'Invalid URL — paste a direct link to a .json or .yaml file.',
   apifox: 'Apifox',
@@ -758,7 +677,6 @@ const en: Translations = {
   exportScopeFolder: 'Folder',
   exportScopeCollection: 'Collection',
   descriptionOptional: 'Optional — appears in the OpenAPI info block',
-  exportPreview: 'Preview',
 
   searchUrlName: 'Search URL, name...',
   allMethods: 'All Methods',
@@ -790,16 +708,9 @@ const en: Translations = {
   selectHint: 'select',
   closeHint: 'close',
   cmdNew: 'New Request',
-  cmdManageEnvs: 'Manage Environments…',
   cmdImport: 'Import from cURL / OpenAPI…',
   cmdExport: 'Export as OpenAPI…',
-  cmdTheme: 'Theme',
-  cmdDuplicate: 'Duplicate current request',
 
-  getStartedHint: 'Get started by creating a folder, importing an existing collection, or trying an example.',
-  tryExampleDescription: 'Create a sample folder with example requests to explore the features.',
-  importDescription: 'Import from cURL, OpenAPI, or Postman Collection',
-  startFreshDescription: 'Create a new empty folder to organize your requests.',
 
   nothingHereYet: 'Nothing here yet',
 
@@ -830,7 +741,6 @@ const en: Translations = {
   examplesFolderName: 'Examples',
   exampleGetUser: 'Get a demo user (JSON)',
   examplePostEcho: 'Echo a POST with JSON body',
-  gotIt: 'Got it',
 
   nameRequired: 'Name is required',
   renameFolderTitle: 'Rename Folder',
@@ -918,7 +828,6 @@ const en: Translations = {
   importedRequestsSummary: 'Imported {n} request(s)',
   skippedDuplicatesSummary: ', skipped {n} duplicate(s)',
   loadedFileName: 'Loaded {name}',
-  createdTemplate: 'Created "{name}" template',
 
   cmdNewDesc: 'Create a new empty request',
   cmdNewFolderDesc: 'Create a new folder',
@@ -940,7 +849,6 @@ const en: Translations = {
   shortcutSwitchEnvironment: 'Switch Environment',
   shortcutCloseModal: 'Close Modal / Panel',
   optional: 'optional',
-  saveToCollection: 'Save to collection',
   responseTestsTab: 'Tests',
 
   // Misc placeholders
@@ -1035,18 +943,11 @@ const zhCN: Translations = {
   environments: '环境',
   globals: '全局变量',
   noEnvironment: '无环境',
-  addVariable: '添加变量',
-  importEnv: '导入',
-  exportEnv: '导出',
 
   history: '历史记录',
   clearHistory: '清空历史',
-  noHistory: '暂无历史记录',
 
   templates: '模板',
-  oauthTemplate: 'OAuth 2.0',
-  graphqlTemplate: 'GraphQL',
-  webhookTemplate: 'Webhook',
 
   settings: '设置',
   autoSaveHistory: '自动保存历史',
@@ -1057,14 +958,14 @@ const zhCN: Translations = {
   deleted: '已删除',
   copied: '已复制',
   imported: '已导入',
+  unitOperations: '个接口',
+  unitTags: '个标签',
+  duplicatesSkipped: '个重复已跳过',
   exported: '已导出',
   error: '错误',
   success: '成功',
   warning: '警告',
-  noRequests: '暂无请求',
-  noFolders: '暂无文件夹',
   enterUrl: '请输入 URL',
-  unresolvedVariables: '未解析的变量',
 
   GET: 'GET',
   POST: 'POST',
@@ -1080,21 +981,11 @@ const zhCN: Translations = {
 
   sendRequest: '发送请求以查看响应',
   createFolder: '创建一个文件夹开始使用',
-  importCollection: '导入集合',
-  startFresh: '从零开始',
-  selectEnvironment: '选择环境',
 
-  welcome: '欢迎使用 Pico API',
   tryExample: '试试示例',
-  quickTips: '使用提示',
 
-  openFullPage: '打开完整页面',
-  toggleSidebar: '切换侧边栏',
-  commandPalette: '命令面板',
-  requestTemplates: '请求模板',
   historyTitle: '请求历史',
   importApi: '导入 API',
-  exportApi: '导出为 OpenAPI',
 
   key: '键',
   value: '值',
@@ -1103,25 +994,18 @@ const zhCN: Translations = {
   scope: '范围',
   folder: '文件夹',
   preview: '预览',
-  cancel2: '关闭',
 
   addRow: '添加行',
   noParametersHint: '此请求没有参数。',
   noHeadersHint: '此请求没有请求头。点击 + 添加行新建一个。',
   browseHeaders: '浏览常用请求头',
   browseValues: '浏览建议值',
-  parameterName: '参数名',
   headerName: '请求头',
 
-  bodyModeNone: '无',
   bodyModeUrlencoded: 'x-www-form-urlencoded',
   bodyModeFormdata: 'form-data',
   bodyModeRaw: 'raw',
-  bodyRawJson: 'JSON',
-  bodyRawXml: 'XML',
-  bodyRawText: 'Text',
   methodNoBodyHint: '不携带请求体。切换到 POST / PUT / PATCH 才能发送请求体。',
-  noBodyHint: '此请求没有请求体。',
   fieldName: '字段名',
   textValue: '文本值',
   fileButton: '文件…',
@@ -1142,9 +1026,6 @@ const zhCN: Translations = {
   requestBodyPlaceholder: '请求体...',
 
   unsavedChanges: '未保存的修改',
-  unsupportedProtocol: '不支持的协议 — 仅允许 http 和 https。',
-  invalidUrlHostname: 'URL 无效 — 主机名为空。',
-  invalidUrl: 'URL 无效',
   nothingToDuplicate: '没有可复制的内容',
 
   sending: '发送中...',
@@ -1159,11 +1040,6 @@ const zhCN: Translations = {
   pdfPreview: 'PDF 预览',
   binaryData: '二进制数据',
   noResponseBody: '无响应内容',
-  corsError: '被 CORS 拦截 — 服务器未在 Access-Control-Allow-Origin 中包含此来源。',
-  dnsError: '主机名 DNS 解析失败。',
-  connectError: '无法连接到服务器。',
-  tlsError: 'TLS 握手失败（证书过期 / 自签名？）',
-  timeoutError: '请求超时',
   requestCancelled: '请求已取消。',
   originalError: '原始错误',
   serverError: '服务器错误 — API 处理此请求失败。',
@@ -1181,7 +1057,6 @@ const zhCN: Translations = {
   noFoldersYet: '暂无文件夹。',
   createFolderHint: '使用上方按钮或右键创建一个。',
   selectedCount: '已选',
-  selectBatchHint: '选择多个请求进行批量操作',
   unfiledRoot: '— 未归档（根）—',
   filterFolders: '过滤文件夹…',
   noMatchingFolders: '没有匹配的文件夹',
@@ -1193,7 +1068,6 @@ const zhCN: Translations = {
   noVariablesHint: '暂无变量。点击 + 添加行新建。',
   noGlobalsHint: '暂无全局变量。点击 + 添加行新建。',
   selectEnvironmentHint: '选择环境或新建一个',
-  deleteConfirm: '删除',
   deleteWarning: '此操作不可撤销。',
 
   curl: 'cURL',
@@ -1203,7 +1077,6 @@ const zhCN: Translations = {
   pasteOpenapiHint: '粘贴 JSON 文档（openapi: 3.x 或 swagger: 2.x）。每个 operation 成为一个请求；tags 转为文件夹。',
   headsUp: '提示',
   importFromUrl: '从 URL 导入',
-  fetchingUrl: '正在获取…',
   newFolderName: '新建文件夹',
   invalidImportUrl: '链接无效 — 请粘贴 .json 或 .yaml 文件的直接链接。',
   apifox: 'Apifox',
@@ -1219,7 +1092,6 @@ const zhCN: Translations = {
   exportScopeFolder: '文件夹',
   exportScopeCollection: '整个集合',
   descriptionOptional: '可选 — 出现在 OpenAPI info 块中',
-  exportPreview: '预览',
 
   searchUrlName: '搜索 URL、名称...',
   allMethods: '全部方法',
@@ -1251,16 +1123,9 @@ const zhCN: Translations = {
   selectHint: '选择',
   closeHint: '关闭',
   cmdNew: '新建请求',
-  cmdManageEnvs: '管理环境…',
   cmdImport: '从 cURL / OpenAPI 导入…',
   cmdExport: '导出为 OpenAPI…',
-  cmdTheme: '主题',
-  cmdDuplicate: '复制当前请求',
 
-  getStartedHint: '通过创建文件夹、导入现有集合或试用示例开始使用。',
-  tryExampleDescription: '创建一个示例文件夹，包含示例请求以探索功能。',
-  importDescription: '从 cURL、OpenAPI 或 Postman 集合导入',
-  startFreshDescription: '创建一个新的空文件夹来组织您的请求。',
 
   nothingHereYet: '暂无内容',
 
@@ -1291,7 +1156,6 @@ const zhCN: Translations = {
   examplesFolderName: '示例',
   exampleGetUser: '获取演示用户(JSON)',
   examplePostEcho: '发送 JSON 并回显',
-  gotIt: '知道了',
 
   nameRequired: '名称不能为空',
   renameFolderTitle: '重命名文件夹',
@@ -1379,7 +1243,6 @@ const zhCN: Translations = {
   importedRequestsSummary: '已导入 {n} 个请求',
   skippedDuplicatesSummary: '，跳过 {n} 个重复项',
   loadedFileName: '已加载 {name}',
-  createdTemplate: '已创建「{name}」模板',
 
   cmdNewDesc: '创建新的空请求',
   cmdNewFolderDesc: '创建新文件夹',
@@ -1401,7 +1264,6 @@ const zhCN: Translations = {
   shortcutSwitchEnvironment: '切换环境',
   shortcutCloseModal: '关闭弹窗 / 面板',
   optional: '可选',
-  saveToCollection: '保存到集合',
   responseTestsTab: '测试',
 
   // Misc placeholders

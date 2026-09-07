@@ -16,6 +16,7 @@ import { downloadBlob } from '@/utils/download'
 import type { ResponseResult } from '@/core/types'
 import { useI18n } from '@/i18n/useI18n'
 import { fmt } from '@/i18n'
+import { highlightJsonLike } from '@/utils/highlight'
 
 const { t } = useI18n()
 const props = defineProps<{
@@ -58,27 +59,7 @@ const bodyText = computed(() => {
   return raw
 })
 
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
-function highlightJson(s: string): string {
-  const re = /("(?:\\.|[^"\\])*"\s*:?)|(\b(?:true|false)\b)|(\bnull\b)|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|([{}\[\],])/g
-  return escapeHtml(s).replace(re, (_m, str, bool, nul, num, punct) => {
-    if (str !== undefined) {
-      const isKey = /:\s*$/.test(str.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&'))
-      return isKey
-        ? `<span class="tk-key">${str}</span>`
-        : `<span class="tk-str">${str}</span>`
-    }
-    if (bool !== undefined) return `<span class="tk-kw">${bool}</span>`
-    if (nul !== undefined) return `<span class="tk-kw">${nul}</span>`
-    if (num !== undefined) return `<span class="tk-num">${num}</span>`
-    if (punct !== undefined) return `<span class="tk-punc">${punct}</span>`
-    return _m
-  })
-}
-
-const bodyHtml = computed(() => kind.value === 'json' ? highlightJson(bodyText.value) : '')
+const bodyHtml = computed(() => kind.value === 'json' ? highlightJsonLike(bodyText.value) : '')
 
 async function copyBody() {
   try {
