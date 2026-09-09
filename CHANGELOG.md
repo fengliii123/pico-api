@@ -56,6 +56,24 @@ Correctness and hardening release (full code review pass).
   the unused `@codemirror/theme-one-dark` / `@types/js-yaml` dependencies.
   `@codemirror/language` and `@codemirror/autocomplete` are now declared
   dependencies (they were riding transitive resolution).
+- ~150 lines of unreachable CSS in ResponsePanel (the code/image/binary
+  styles actually live in ResponseBodyRenderer) and a dead `splitUrlParams`
+  wrapper in the cURL importer.
+
+### Refactored (behavior-preserving)
+
+- Full readability pass: the duplicated URL-validation block in `send()`
+  now shares one `assertHttpUrl` path; transport-body encoding, cookie
+  injection, script-context assembly, sibling re-ordering, and the
+  undo/redo bodies each collapsed to a single shared implementation.
+- AntD drop placement derivation extracted into a pure
+  `resolveDropPlacement` (treeUtils) — the tree component's drop handler
+  is now ~30 lines.
+- The success / streaming-completed response tabs share one
+  `ResponseResultTabs` component instead of two near-identical template
+  blocks.
+- `src/i18n/index.ts` (1,300 lines) split into `types.ts` / `en.ts` /
+  `zh-CN.ts` plus a 40-line aggregation entry point.
 
 ## [1.0.7] — 2026-09-03
 

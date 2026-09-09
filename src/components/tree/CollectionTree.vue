@@ -31,7 +31,8 @@ import {
   folderIdFromKey,
   isFolderKey,
   isRequestKey,
-  requestIdFromKey
+  requestIdFromKey,
+  resolveDropPlacement
 } from './treeUtils'
 import type { VNode } from 'vue'
 import { useI18n } from '@/i18n/useI18n'
@@ -340,7 +341,6 @@ async function deleteFolderPrompt(folderId: string) {
     }
   }
 
-  const directChildFolders = allFolders.filter(f => f.parentId === folderId).length
   const descendantRequests = allRequests.filter(r => r.folderId !== null && subtreeFolderIds.has(r.folderId)).length
   // Descendant folder count excludes the folder itself.
   const descendantFolderCount = subtreeFolderIds.size - 1
@@ -522,14 +522,9 @@ function dispatchMenuAction(name: string, targetId: string | null) {
   }
 }
 
-//
-// Antd Tree 4.x emits @drop with a single info object. We translate it
-// into the same (targetParentId, beforeId, atEnd) shape our moveFolder /
-// moveRequest store helpers already accept.
-//
-//   info.dropToGap = true  → drop between siblings of info.node
-//   info.dropToGap = false → drop "inside" info.node (only valid for folders)
-//   info.dropPosition     → -1: above, 1: below (gap mode)
+// Antd Tree 4.x emits @drop with a single info object — resolveDropPlacement
+// (treeUtils) translates it into the (targetParentId, beforeId, atEnd)
+// shape our moveFolder / moveRequest store helpers accept.
 //
 // Allow-drop predicate. We always allow dropping INSIDE a folder
 // (dropPosition === 0), even when the folder is empty — Antd's default
@@ -559,64 +554,37 @@ async function onAntdDrop(info: any) {
   const dragKey: string = info.dragNode?.key ?? info.dragNodesKeys?.[0] ?? ''
   const targetKey: string = info.node?.key ?? ''
   if (!dragKey || dragKey === targetKey) return
-  const dropToGap: boolean = !!info.dropToGap
-  const pos: number = Number(info.dropPosition ?? 0)
 
   const isDragFolder = isFolderKey(dragKey)
   const dragId = isDragFolder ? folderIdFromKey(dragKey) : requestIdFromKey(dragKey)
   if (!dragId) return
 
-  let targetParentId: string | null
-  let beforeId: string | null
-  let atEnd: boolean
-
-  // Special case: a request dropped onto a folder ALWAYS goes inside
-  // the folder, regardless of what Antd thinks the drop edge was. Antd
-  // reports dropToGap=true for empty folders (because there's no first
-  // child to "drop above"), which would otherwise route us into the
-  // sibling branch and leave the request next to the folder instead
-  // of inside it.
-  if (!isDragFolder && isFolderKey(targetKey)) {
-    targetParentId = folderIdFromKey(targetKey)
-    beforeId = null
-    atEnd = true
-  } else if (!dropToGap) {
-    // Drop inside info.node. Folders hold children; if the target is a
-    // request, fall back to that request's parent folder.
-    if (isFolderKey(targetKey)) {
-      targetParentId = folderIdFromKey(targetKey)
-    } else {
-      const r = collStore.requestsById.get(requestIdFromKey(targetKey))
-      if (!r) return
-      targetParentId = r.folderId
+  const placement = resolveDropPlacement(
+    {
+      isDragFolder,
+      targetKey,
+      dropToGap: !!info.dropToGap,
+      dropPosition: Number(info.dropPosition ?? 0)
+    },
+    {
+      folderParent: id => collStore.foldersById.get(id)?.parentId,
+      requestFolder: id => collStore.requestsById.get(id)?.folderId
     }
-    beforeId = null
-    atEnd = true
-  } else {
-    // Gap mode: drop as sibling of info.node, before or after it.
-    if (isFolderKey(targetKey)) {
-      const target = collStore.foldersById.get(folderIdFromKey(targetKey))
-      targetParentId = target?.parentId ?? null
-    } else {
-      const r = collStore.requestsById.get(requestIdFromKey(targetKey))
-      if (!r) return
-      targetParentId = r.folderId
-    }
-    if (pos < 0) {
-      beforeId = isFolderKey(targetKey) ? folderIdFromKey(targetKey) : requestIdFromKey(targetKey)
-      atEnd = false
-    } else {
-      beforeId = null
-      atEnd = true
-    }
-  }
+  )
+  if (!placement) return
 
   try {
     if (isDragFolder) {
-      const ok = await collStore.moveFolder(dragId, targetParentId, { beforeId, atEnd })
+      const ok = await collStore.moveFolder(dragId, placement.targetParentId, {
+        beforeId: placement.beforeId,
+        atEnd: placement.atEnd
+      })
       if (!ok) message.warning(t.value.cannotMoveFolder)
     } else {
-      await collStore.moveRequest(dragId, targetParentId, { beforeId, atEnd })
+      await collStore.moveRequest(dragId, placement.targetParentId, {
+        beforeId: placement.beforeId,
+        atEnd: placement.atEnd
+      })
     }
   } catch (e: any) {
     message.error(e?.message ?? t.value.moveFailed)

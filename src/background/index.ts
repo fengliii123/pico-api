@@ -90,6 +90,19 @@ function transportBodyToInit(req: BridgeNormalizedRequest): BodyInit | undefined
   return undefined
 }
 
+// Resolve the outgoing header set for a bridge request: inject the
+// browser's cookie jar when requested and the user hasn't set a Cookie
+// header themselves. (User-set Cookie wins — we don't want to silently
+// override an explicit value.)
+async function resolveHeaders(req: BridgeNormalizedRequest, sendBrowserCookies?: boolean): Promise<Record<string, string>> {
+  let headers = req.headers
+  if (!sendBrowserCookies) return headers
+  const hasUserCookie = Object.keys(headers).some(k => k.toLowerCase() === 'cookie')
+  if (hasUserCookie) return headers
+  const cookieHeader = await buildBrowserCookieHeader(req.url)
+  return cookieHeader ? { ...headers, Cookie: cookieHeader } : headers
+}
+
 // Read the browser's cookie jar for the target URL and build a Cookie
 // header. Returns null if there are no cookies or the chrome.cookies API
 // isn't available (e.g. permission missing).
@@ -114,19 +127,7 @@ async function runFetch(payload: FetchPayload): Promise<{ ok: true; result: Resp
   const cancelCtrl = new AbortController()
   inflightFetches.set(payload.id, cancelCtrl)
   try {
-    // Inject browser cookies if requested and the user hasn't set a Cookie
-    // header themselves. (User-set Cookie wins — we don't want to silently
-    // override an explicit value.)
-    let headers = payload.req.headers
-    if (payload.options?.sendBrowserCookies) {
-      const hasUserCookie = Object.keys(headers).some(k => k.toLowerCase() === 'cookie')
-      if (!hasUserCookie) {
-        const cookieHeader = await buildBrowserCookieHeader(payload.req.url)
-        if (cookieHeader) {
-          headers = { ...headers, Cookie: cookieHeader }
-        }
-      }
-    }
+    const headers = await resolveHeaders(payload.req, payload.options?.sendBrowserCookies)
 
     // Reconstruct Blob body if the options page base64-encoded it for
     // transport (sendMessage can't carry Blob directly).
@@ -219,17 +220,7 @@ async function runStreamingFetch(
   const port = streamingPorts.get(payload.id)
 
   try {
-    // Inject browser cookies.
-    let headers = payload.req.headers
-    if (payload.options?.sendBrowserCookies) {
-      const hasUserCookie = Object.keys(headers).some(k => k.toLowerCase() === 'cookie')
-      if (!hasUserCookie) {
-        const cookieHeader = await buildBrowserCookieHeader(payload.req.url)
-        if (cookieHeader) {
-          headers = { ...headers, Cookie: cookieHeader }
-        }
-      }
-    }
+    const headers = await resolveHeaders(payload.req, payload.options?.sendBrowserCookies)
 
     const init: RequestInit = {
       method: payload.req.method,

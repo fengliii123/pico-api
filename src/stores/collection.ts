@@ -163,6 +163,26 @@ export const useCollectionStore = defineStore('collection', () => {
     useRequestStore().forgetCached(id)
   }
 
+  // `siblings` already excludes the moved item — splice the moved item
+  // back in at the requested slot, then re-number the whole list so
+  // every sibling's `order` field is consistent. Shared by moveRequest
+  // and moveFolder.
+  function insertWithPlacement<T extends { id: string; order: number }>(
+    siblings: T[],
+    moved: T,
+    placement: { beforeId: string | null; atEnd: boolean }
+  ): void {
+    let insertIdx = siblings.length
+    if (placement.beforeId) {
+      const idx = siblings.findIndex(x => x.id === placement.beforeId)
+      insertIdx = idx >= 0 ? idx : siblings.length
+    } else if (placement.atEnd) {
+      insertIdx = siblings.length
+    }
+    siblings.splice(insertIdx, 0, moved)
+    siblings.forEach((x, i) => { x.order = i })
+  }
+
   async function moveRequest(
     id: string,
     folderId: string | null,
@@ -177,19 +197,7 @@ export const useCollectionStore = defineStore('collection', () => {
     const siblings = requestList.value
       .filter(x => x.folderId === folderId && x.id !== id)
       .sort((a, b) => a.order - b.order)
-
-    // `siblings` already excludes the moved item — splice the moved item
-    // back in at the requested slot, then re-number the whole list so
-    // every sibling's `order` field is consistent.
-    let insertIdx = siblings.length
-    if (placement.beforeId) {
-      const idx = siblings.findIndex(x => x.id === placement.beforeId)
-      insertIdx = idx >= 0 ? idx : siblings.length
-    } else if (placement.atEnd) {
-      insertIdx = siblings.length
-    }
-    siblings.splice(insertIdx, 0, r)
-    siblings.forEach((x, i) => { x.order = i })
+    insertWithPlacement(siblings, r, placement)
 
     // Spread to strip the Vue reactive Proxy before pushing to IDB.
     // (See note above for context.)
@@ -222,16 +230,7 @@ export const useCollectionStore = defineStore('collection', () => {
     const siblings = folderList.value
       .filter(x => x.parentId === parentId && x.id !== id)
       .sort((a, b) => a.order - b.order)
-
-    let insertIdx = siblings.length
-    if (placement.beforeId) {
-      const idx = siblings.findIndex(x => x.id === placement.beforeId)
-      insertIdx = idx >= 0 ? idx : siblings.length
-    } else if (placement.atEnd) {
-      insertIdx = siblings.length
-    }
-    siblings.splice(insertIdx, 0, f)
-    siblings.forEach((x, i) => { x.order = i })
+    insertWithPlacement(siblings, f, placement)
 
     await foldersDb.put(f)
     for (const x of siblings) {

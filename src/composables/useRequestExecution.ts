@@ -176,28 +176,31 @@ export function useRequestExecution() {
     }
   }
 
+  // Shared ScriptRunContext assembly for both script phases.
+  function scriptContext(normalized: NormalizedRequest, response: ResponseResult | null) {
+    return {
+      requestUrl: normalized.url,
+      requestMethod: normalized.method,
+      requestHeaders: normalized.headers,
+      requestBody: normalized.body as string | undefined,
+      response,
+      envVars: envStore.activeVariables,
+      globals: envStore.globals.variables,
+      sendRequest: sendRequestExecutor
+    }
+  }
+
   // Run the pre-request script. Returns the captured logs and a flag
   // indicating whether the script wrote any variables (caller must
-  // re-normalize + re-validate the URL when this is true).
+  // re-normalize + re-validate the URL when this is true). Variable
+  // writes are persisted here as a side effect (environment/globals
+  // scopes); local scope is replayed by the caller via withLocalVars.
   async function runPreRequest(
     script: string,
     normalized: NormalizedRequest
   ): Promise<{ logs: string[]; renormalize: boolean; requestPatch: Partial<NormalizedRequest> | null; varChanges: VariableChange[] }> {
     if (!script) return { logs: [], renormalize: false, requestPatch: null, varChanges: [] }
-    const result = await runScript(
-      script,
-      {
-        requestUrl: normalized.url,
-        requestMethod: normalized.method,
-        requestHeaders: normalized.headers,
-        requestBody: normalized.body as string | undefined,
-        response: null,
-        envVars: envStore.activeVariables,
-        globals: envStore.globals.variables,
-        sendRequest: sendRequestExecutor
-      },
-      (msg) => { /* logs collected in result */ void msg }
-    )
+    const result = await runScript(script, scriptContext(normalized, null))
     await persistVarChanges(result.varChanges)
     return {
       logs: result.logs,
@@ -216,20 +219,23 @@ export function useRequestExecution() {
     response: ResponseResult | null
   ): Promise<{ logs: string[]; testResults: TestResult[] }> {
     if (!script) return { logs: [], testResults: [] }
-    const result = await runScript(
-      script,
-      {
-        requestUrl: normalized.url,
-        requestMethod: normalized.method,
-        requestHeaders: normalized.headers,
-        requestBody: normalized.body as string | undefined,
-        response,
-        envVars: envStore.activeVariables,
-        globals: envStore.globals.variables,
-        sendRequest: sendRequestExecutor
-      }
-    )
+    const result = await runScript(script, scriptContext(normalized, response))
     return { logs: result.logs, testResults: result.tests }
+  }
+
+  // Error path: still run the post-response script (Postman parity —
+  // users may assert on failure states). Script failures are swallowed
+  // so they never mask the original request error.
+  async function runPostResponseOnError(
+    script: string,
+    normalized: NormalizedRequest
+  ): Promise<{ logs: string[]; testResults: TestResult[] }> {
+    if (!script) return { logs: [], testResults: [] }
+    try {
+      return await runPostResponse(script, normalized, null)
+    } catch {
+      return { logs: [], testResults: [] }
+    }
   }
 
   async function recordHistory(status: number, time: number, size: number) {
@@ -285,30 +291,6 @@ export function useRequestExecution() {
       return
     }
 
-    try {
-      const u = new URL(normalized.url)
-      if (!/^https?:$/.test(u.protocol)) {
-        resStore.setError({
-          message: fmt(t.value.errUnsupportedProtocol, { label: 'URL', protocol: u.protocol }),
-          errorKind: 'connect'
-        })
-        return
-      }
-      if (!u.hostname) {
-        resStore.setError({
-          message: t.value.errInvalidUrlHostname,
-          errorKind: 'connect'
-        })
-        return
-      }
-    } catch (e: any) {
-      resStore.setError({
-        message: fmt(t.value.errInvalidUrl, { message: e?.message ?? t.value.errCouldNotParse }),
-        errorKind: 'connect'
-      })
-      return
-    }
-
     const validateNormalizedUrl = (label: string): boolean => {
       const err = assertHttpUrl(normalized.url, label)
       if (err) {
@@ -317,6 +299,7 @@ export function useRequestExecution() {
       }
       return true
     }
+    if (!validateNormalizedUrl('URL')) return
 
     try {
       const preRequest = await runPreRequest(draft.scripts?.preRequest ?? '', normalized)
@@ -385,20 +368,8 @@ export function useRequestExecution() {
         resStore.setError({ message: t.value.requestCancelled, errorKind: 'aborted' })
         return
       }
-      // Run post-response scripts even on error (they might check for
-      // error conditions). Failures here are swallowed so they don't
-      // mask the original request error.
-      let postLogs: string[] = []
-      let testResults: any[] = []
-      if (draft.scripts?.postResponse) {
-        try {
-          const post = await runPostResponse(draft.scripts.postResponse, normalized, null)
-          postLogs = post.logs
-          testResults = post.testResults
-        } catch {
-          // ignore script errors during error handling
-        }
-      }
+      const { logs: postLogs, testResults } =
+        await runPostResponseOnError(draft.scripts?.postResponse ?? '', normalized)
 
       // Forward whatever shape we got so the panel can render the
       // right hint. Timeouts carry a raw English message from the fetch
@@ -407,7 +378,7 @@ export function useRequestExecution() {
         const err = e.errorKind === 'timeout' ? { ...e, message: t.value.errTimeout } : e
         resStore.setError(err, testResults, { preRequest: [], postResponse: postLogs })
       } else {
-        resStore.setError({ message: e?.message ?? t.value.errRequestFailed }, testResults, { preRequest: [], postResponse: postLogs })
+        resStore.setError({ message: e?.message ?? t.value.errRequestFailed, errorKind: 'unknown' }, testResults, { preRequest: [], postResponse: postLogs })
       }
     } finally {
       if (inflightAbort?.signal === signal) inflightAbort = null

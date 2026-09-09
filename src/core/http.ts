@@ -2,6 +2,7 @@ import type { DraftRequest, ResponseResult, ResponseError, EnvironmentVariable, 
 import { buildUrl, urlWithParams } from './url'
 import { mergeAbortSignals } from './abortSignals'
 import { bytesToBase64, base64ToBytes } from './binaryTransport'
+import { hasExtensionRuntime } from './env'
 import { extractResourceTiming } from './timing'
 import { readCappedResponseBody } from './fetchResponseBody'
 import { maxResponseBytes, streamTruncationNotice } from './responseSize'
@@ -204,15 +205,9 @@ export function classifyFetchError(
 }
 
 // Extension options page fetch goes through the background SW (CORS bypass).
-// Dev/preview falls back to direct fetch when chrome.runtime is unavailable.
-declare const chrome: any | undefined
-function hasExtensionRuntime(): boolean {
-  try {
-    return typeof chrome !== 'undefined' && !!chrome?.runtime?.id
-  } catch {
-    return false
-  }
-}
+// Dev/preview falls back to direct fetch when chrome.runtime is unavailable
+// (see core/env.ts). The bridge code below talks to the raw chrome global.
+declare const chrome: any
 
 // Bridge transport shape: NormalizedRequest plus optional base64 body
 // metadata when the options page sends a multipart Blob through sendMessage.
@@ -245,30 +240,29 @@ interface BridgeFailure {
   error: ResponseError
 }
 
+// chrome.runtime.sendMessage only supports JSON-serializable messages —
+// Blob / ArrayBuffer / FormData all get silently flattened to {} by
+// JSON.stringify. For Blob bodies (our multipart path), base64-encode
+// the bytes and ship the content-type alongside so the SW can rebuild
+// the Blob before fetch (transportBodyToInit on the receiving side).
+async function toTransportBody(req: NormalizedRequest): Promise<BridgeNormalizedRequest> {
+  if (!(req.body instanceof Blob)) {
+    return { ...req, _bodyIsBlob: false, _bodyContentType: undefined }
+  }
+  const buf = await req.body.arrayBuffer()
+  return {
+    ...req,
+    body: bytesToBase64(new Uint8Array(buf)),
+    _bodyIsBlob: true,
+    _bodyContentType: req.body.type
+  }
+}
+
 async function executeViaBridge(req: NormalizedRequest, opts: ExecuteOptions): Promise<ResponseResult> {
   const id = Math.random().toString(36).slice(2) + Date.now().toString(36)
-  // chrome.runtime.sendMessage only supports JSON-serializable messages —
-  // Blob / ArrayBuffer / FormData all get silently flattened to {} by
-  // JSON.stringify. For Blob bodies (our multipart path), base64-encode
-  // the bytes and ship the content-type alongside so the SW can rebuild
-  // the Blob before fetch.
-  let transportBody: any = req.body
-  let transportBodyIsBlob = false
-  let transportBodyContentType: string | undefined
-  if (req.body instanceof Blob) {
-    transportBodyIsBlob = true
-    transportBodyContentType = req.body.type
-    const buf = await req.body.arrayBuffer()
-    transportBody = bytesToBase64(new Uint8Array(buf))
-  }
+  const bridgeReq = await toTransportBody(req)
   // Send along the cookie-injection flag so the SW knows whether to read
   // the browser cookie jar.
-  const bridgeReq: BridgeNormalizedRequest = {
-    ...req,
-    body: transportBody,
-    _bodyIsBlob: transportBodyIsBlob,
-    _bodyContentType: transportBodyContentType
-  }
   const message = {
     id,
     req: bridgeReq,
@@ -366,23 +360,7 @@ async function executeStreamingViaBridge(
 ): Promise<ResponseResult & { isStreaming: boolean }> {
   const id = Math.random().toString(36).slice(2) + Date.now().toString(36)
 
-  // Transport body handling (same as executeViaBridge).
-  let transportBody: any = req.body
-  let transportBodyIsBlob = false
-  let transportBodyContentType: string | undefined
-  if (req.body instanceof Blob) {
-    transportBodyIsBlob = true
-    transportBodyContentType = req.body.type
-    const buf = await req.body.arrayBuffer()
-    transportBody = bytesToBase64(new Uint8Array(buf))
-  }
-
-  const bridgeReq: BridgeNormalizedRequest = {
-    ...req,
-    body: transportBody,
-    _bodyIsBlob: transportBodyIsBlob,
-    _bodyContentType: transportBodyContentType
-  }
+  const bridgeReq = await toTransportBody(req)
 
   const { onChunk, signal } = opts
   let fullText = ''

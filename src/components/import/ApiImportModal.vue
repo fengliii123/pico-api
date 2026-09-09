@@ -268,6 +268,13 @@ async function onImport() {
     error.value = t.value.pasteFirst
     return
   }
+  // OpenAPI mode parses live in the watch above; if that parse failed
+  // there is no preview and nothing to import — surface the same error
+  // the preview already showed instead of a bare "nothing to import".
+  if (mode.value === 'openapi' && !openApiPreview.value) {
+    if (!error.value) error.value = t.value.couldNotParse
+    return
+  }
   try {
     if (mode.value === 'curl') {
       await importCurl()
@@ -336,7 +343,7 @@ function isUrlLike(s: string): boolean {
 async function importFromUrl() {
   const url = importUrl.value.trim()
   if (!url) return
-  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+  if (!isUrlLike(url)) {
     error.value = t.value.invalidImportUrl
     return
   }
@@ -525,7 +532,6 @@ function cancelNewFolder() {
           class="new-folder-inline-input"
           @press-enter="confirmNewFolder"
           @keydown.esc="cancelNewFolder"
-          ref="newFolderInputRef"
         />
         <Button size="small" type="primary" @click="confirmNewFolder">
           {{ t.confirm }}

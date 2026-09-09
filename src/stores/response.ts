@@ -41,7 +41,7 @@ export type ResponseState =
   // `errorKind` for the classified cause, so the names don't collide.
   | { kind: 'error' } & ResponseError & { testResults?: ScriptTestResult[]; scriptLogs?: ScriptLogs }
 
-const NEW_REQUEST_KEY = '__new__'
+import { NEW_REQUEST_KEY } from './request'
 
 export const useResponseStore = defineStore('response', () => {
   // Map<requestId, ResponseState>
@@ -70,12 +70,9 @@ export const useResponseStore = defineStore('response', () => {
     cache.value = newCache
   }
 
-  function setError(err: ResponseError | string, testResults?: ScriptTestResult[], scriptLogs?: ScriptLogs) {
+  function setError(err: ResponseError, testResults?: ScriptTestResult[], scriptLogs?: ScriptLogs) {
     const key = activeId.value ?? NEW_REQUEST_KEY
-    const s: ResponseState =
-      typeof err === 'string'
-        ? { kind: 'error', message: err, errorKind: 'unknown', testResults, scriptLogs }
-        : { kind: 'error', ...err, testResults, scriptLogs }
+    const s: ResponseState = { kind: 'error', ...err, testResults, scriptLogs }
     const newCache = new Map(cache.value)
     newCache.set(key, s)
     cache.value = newCache

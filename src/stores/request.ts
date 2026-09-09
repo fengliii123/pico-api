@@ -73,11 +73,12 @@ function snapshotDraft(d: DraftRequest): DraftRequest {
   return cloned
 }
 
-  // Cache key for unsaved drafts (id === null). A fresh "New" always
-  // overwrites this slot, so only the most recent unsaved draft is retained
-  // — which matches user expectation (there's no tree node to "switch back
-  // to" for an unsaved draft anyway).
-  const NEW_REQUEST_KEY = '__new__'
+// Cache key for unsaved drafts (id === null). A fresh "New" always
+// overwrites this slot, so only the most recent unsaved draft is retained
+// — which matches user expectation (there's no tree node to "switch back
+// to" for an unsaved draft anyway). Shared with the response store,
+// which caches response state under the same sentinel.
+export const NEW_REQUEST_KEY = '__new__'
 
 // Backward-compat: pre-v* data stored post-response code under `tests`.
 // `migrateScripts` lives in core/scripts/migrate.ts so collection

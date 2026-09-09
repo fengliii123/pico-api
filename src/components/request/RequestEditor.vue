@@ -18,7 +18,7 @@ import { processHeaders } from '@/core/headers'
 import { deepClone } from '@/utils/clone'
 import { escapeHtml } from '@/utils/highlight'
 import { useRequestExecution } from '@/composables/useRequestExecution'
-import type { KeyValueRow, FormDataRow, RequestBody, HttpMethod, SavedRequest, AuthConfig, RequestScripts, RequestSettings } from '@/core/types'
+import type { KeyValueRow, FormDataRow, RequestBody, HttpMethod, SavedRequest, AuthConfig, RequestScripts, RequestSettings, DraftRequest } from '@/core/types'
 import { useI18n } from '@/i18n/useI18n'
 import { fmt } from '@/i18n'
 
@@ -148,9 +148,9 @@ const bodyModeLabel = computed(() => {
   return ''
 })
 
-// user rows from auto-injected ones and persist only the user rows into
-// draft.headers. Auto-injected rows reappear whenever the user clears
-// or removes their own row with the same key.
+// Separate (filter) user rows from auto-injected ones and persist only the
+// user rows into draft.headers. Auto-injected rows reappear whenever the
+// user clears or removes their own row with the same key.
 //
 // Exception: if the user has *edited* an auto-injected row's value (e.g.
 // overriding the form-data Content-Type placeholder), we keep that row as
@@ -190,32 +190,16 @@ async function saveRequest() {
   folderChoiceConfirmed = false
 
   try {
+    const now = Date.now()
+    const full: SavedRequest = { ...reqStore.toSaved(), order: 0, createdAt: now, updatedAt: now }
     if (reqStore.isNew) {
-      const saved = reqStore.toSaved()
-      const now = Date.now()
-      const full: SavedRequest = {
-        ...saved,
-        order: 0,
-        createdAt: now,
-        updatedAt: now
-      }
       const created = await collStore.createRequest(full.folderId, full)
       reqStore.markSaved(created.id)
-      message.success(t.value.saved)
-      return
+    } else {
+      // Existing request — just persist edits.
+      await collStore.updateRequest(full)
+      reqStore.markSaved(full.id)
     }
-
-    // Existing request — just persist edits.
-    const saved = reqStore.toSaved()
-    const now = Date.now()
-    const full: SavedRequest = {
-      ...saved,
-      order: 0,
-      createdAt: now,
-      updatedAt: now
-    }
-    await collStore.updateRequest(full)
-    reqStore.markSaved(full.id)
     message.success(t.value.saved)
   } catch (e: any) {
     const msg = e?.message ?? ''
@@ -278,36 +262,29 @@ watch(
   }
 )
 
-function undo() {
-  const snapshot = undoRedoStore.undo(reqStore.draft)
-  if (snapshot) {
-    suppressTracking++
-    reqStore.draft = { ...snapshot }
-    reqStore.dirty = true
-    // Cancel any pending trackChange from prior edits — it would push a
-    // stale snapshot on top of the just-restored state.
-    if (undoTimer) {
-      clearTimeout(undoTimer)
-      undoTimer = null
-    }
-    suppressTracking--
-    message.success(t.value.undo)
+// Shared undo/redo body: apply a restored snapshot to the draft without
+// re-tracking it (which would corrupt the history stacks).
+function applySnapshot(snapshot: DraftRequest | null, successMsg: string) {
+  if (!snapshot) return
+  suppressTracking++
+  reqStore.draft = { ...snapshot }
+  reqStore.dirty = true
+  // Cancel any pending trackChange from prior edits — it would push a
+  // stale snapshot on top of the just-restored state.
+  if (undoTimer) {
+    clearTimeout(undoTimer)
+    undoTimer = null
   }
+  suppressTracking--
+  message.success(successMsg)
+}
+
+function undo() {
+  applySnapshot(undoRedoStore.undo(reqStore.draft), t.value.undo)
 }
 
 function redo() {
-  const snapshot = undoRedoStore.redo(reqStore.draft)
-  if (snapshot) {
-    suppressTracking++
-    reqStore.draft = { ...snapshot }
-    reqStore.dirty = true
-    if (undoTimer) {
-      clearTimeout(undoTimer)
-      undoTimer = null
-    }
-    suppressTracking--
-    message.success(t.value.redo)
-  }
+  applySnapshot(undoRedoStore.redo(reqStore.draft), t.value.redo)
 }
 
 async function onFolderPicked(folderId: string | null) {
@@ -320,14 +297,14 @@ async function onFolderPicked(folderId: string | null) {
   await saveRequest()
 }
 
-// "Save to..." — explicitly re-prompts for the destination folder even if
-// the draft already has one (useful for moving a saved request).
 function folderDisplay(folderId: string | null): string {
   if (!folderId) return '— Unfiled —'
   const f = collStore.foldersById.get(folderId)
   return f ? f.name : '— Unknown —'
 }
 
+// "Save to..." — explicitly re-prompts for the destination folder even if
+// the draft already has one (useful for moving a saved request).
 async function saveToOtherFolder() {
   // Inline picker: just open it. The picker now picks-and-saves in one go.
   folderPickerOpen.value = true

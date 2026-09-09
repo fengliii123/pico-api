@@ -8,7 +8,7 @@ import type { KeyValueRow } from './types'
 // Normalize scheme only. Query params are merged separately via
 // `urlWithParams` (normalize / setParams) so import/load paths that
 // populate `params[]` without touching the URL bar still send correctly.
-export function buildUrl(baseUrl: string, _params: KeyValueRow[] = []): string {
+export function buildUrl(baseUrl: string): string {
   if (!baseUrl) return ''
   const trimmed = baseUrl.trim()
   // Preserve the URL verbatim. We still auto-prepend https:// for scheme-less

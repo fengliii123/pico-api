@@ -1,6 +1,7 @@
 // pm.* API simulator for pre-request and test scripts (essentials only).
 
 import type { KeyValueRow, ResponseResult, EnvironmentVariable } from '../types'
+import { hasExtensionRuntime } from '../env'
 
 
 export interface PmApi {
@@ -633,16 +634,6 @@ export async function runScriptDirect(
 
   if (pm._pendingAsyncTests?.length) {
     await Promise.all(pm._pendingAsyncTests)
-  }
-}
-
-declare const chrome: { runtime?: { id?: string } } | undefined
-
-function hasExtensionRuntime(): boolean {
-  try {
-    return typeof chrome !== 'undefined' && !!chrome?.runtime?.id
-  } catch {
-    return false
   }
 }
 

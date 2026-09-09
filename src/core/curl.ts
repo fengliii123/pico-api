@@ -242,7 +242,7 @@ export function fromCurl(cmd: string): CurlImportResult {
 
   // Pull path/query params out of the URL into the structured fields so
   // they're editable in the UI.
-  const { cleanUrl, params } = splitUrlParams(url)
+  const { url: cleanUrl, params } = extractParamsFromUrl(url)
 
   const request: DraftRequest = {
     id: null,
@@ -307,11 +307,6 @@ export function inferBody(headers: KeyValueRow[], rawBody: string, hasBody: bool
   if (trimmed.startsWith('{') || trimmed.startsWith('[')) rawType = 'json'
   else if (trimmed.startsWith('<')) rawType = 'xml'
   return { mode: 'raw', rawType, rawText: rawBody }
-}
-
-export function splitUrlParams(url: string): { cleanUrl: string; params: KeyValueRow[] } {
-  const { url: cleanUrl, params } = extractParamsFromUrl(url)
-  return { cleanUrl, params }
 }
 
 function deriveName(url: string, method: string): string {

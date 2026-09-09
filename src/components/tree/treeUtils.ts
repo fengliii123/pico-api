@@ -143,3 +143,69 @@ export function folderIdFromKey(key: string): string {
 export function requestIdFromKey(key: string): string {
   return key.slice('request:'.length)
 }
+
+export interface DropPlacement {
+  targetParentId: string | null
+  beforeId: string | null
+  atEnd: boolean
+}
+
+// Translate an AntD Tree drop event into the (parent, slot) placement our
+// stores understand. Pure: folder/request lookups are injected so the
+// function stays testable. Returns null when the target row no longer
+// exists (stale drop event) — callers should ignore the drop.
+//
+// AntD contract:
+//   info.dropToGap = true  → drop between siblings of info.node
+//   info.dropToGap = false → drop "inside" info.node (only valid for folders)
+//   info.dropPosition      → -1: above, 1: below (gap mode)
+export function resolveDropPlacement(
+  input: {
+    isDragFolder: boolean
+    targetKey: string
+    dropToGap: boolean
+    dropPosition: number
+  },
+  lookups: {
+    folderParent: (folderId: string) => string | null | undefined
+    requestFolder: (requestId: string) => string | null | undefined
+  }
+): DropPlacement | null {
+  const { isDragFolder, targetKey, dropToGap, dropPosition } = input
+
+  // Special case: a request dropped onto a folder ALWAYS goes inside the
+  // folder, regardless of what Antd thinks the drop edge was. Antd
+  // reports dropToGap=true for empty folders (because there's no first
+  // child to "drop above"), which would otherwise route us into the
+  // sibling branch and leave the request next to the folder instead
+  // of inside it.
+  if (!isDragFolder && isFolderKey(targetKey)) {
+    return { targetParentId: folderIdFromKey(targetKey), beforeId: null, atEnd: true }
+  }
+
+  if (!dropToGap) {
+    // Drop inside info.node. Folders hold children; if the target is a
+    // request, fall back to that request's parent folder.
+    if (isFolderKey(targetKey)) {
+      return { targetParentId: folderIdFromKey(targetKey), beforeId: null, atEnd: true }
+    }
+    const parent = lookups.requestFolder(requestIdFromKey(targetKey))
+    if (parent === undefined) return null
+    return { targetParentId: parent, beforeId: null, atEnd: true }
+  }
+
+  // Gap mode: drop as sibling of info.node, before or after it.
+  let targetParentId: string | null
+  if (isFolderKey(targetKey)) {
+    targetParentId = lookups.folderParent(folderIdFromKey(targetKey)) ?? null
+  } else {
+    const parent = lookups.requestFolder(requestIdFromKey(targetKey))
+    if (parent === undefined) return null
+    targetParentId = parent
+  }
+  if (dropPosition < 0) {
+    const beforeId = isFolderKey(targetKey) ? folderIdFromKey(targetKey) : requestIdFromKey(targetKey)
+    return { targetParentId, beforeId, atEnd: false }
+  }
+  return { targetParentId, beforeId: null, atEnd: true }
+}
