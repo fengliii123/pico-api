@@ -101,6 +101,14 @@
     .cta-row { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin: 40px 0 8px; }
     footer { margin-top: 64px; padding: 24px 0 48px; border-top: 1px solid var(--border); font-size: 13px; color: var(--text-muted); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
     footer a { color: var(--text-muted); }
+    @media (max-width: 720px) {
+      nav { flex-wrap: wrap; gap: 8px; }
+      .nav-links { flex-wrap: wrap; gap: 12px; }
+      .hero { padding: 32px 0 16px; }
+      .hero h1 { font-size: 26px; }
+      .tool-actions { flex-wrap: wrap; }
+      .tool-actions input[type="url"] { min-width: 100%; }
+    }
   </style>
 </head>
 <body>
@@ -126,6 +134,9 @@
         streaming responses render. Everything runs client-side; nothing is
         uploaded anywhere.
       </p>
+      <div class="cta-row" style="margin: 20px 0 0">
+        <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/nckjedkhineddehjkdlgaibfgpacmhcl">Install Pico API — Free</a>
+      </div>
     </header>
 
     <main>
@@ -184,12 +195,15 @@
 
     <section>
       <h2>What Pico API adds over this page</h2>
-      <p>This page is limited by the browser's <code>EventSource</code> API — it cannot send <code>Authorization</code> headers, and it only reaches endpoints that send permissive CORS headers. The Pico API extension is not:</p>
+      <p>This page is limited by the browser's <code>EventSource</code> API — it cannot send <code>Authorization</code> headers, and it only reaches endpoints that send permissive CORS headers. The Pico API extension isn't bound by these limits:</p>
       <ul>
         <li>Requests go through the extension's service worker, so <strong>CORS won't block you</strong> and auth headers (Bearer, API key, cookies) work normally</li>
         <li>Streams <strong>any chunked response</strong>, not just <code>text/event-stream</code> — NDJSON, LLM completions, plain chunked HTML</li>
         <li>Full response stats: status, timing, size, headers — and the request can be saved into a collection next to your other endpoints</li>
       </ul>
+      <div class="cta-row" style="margin: 20px 0 0">
+        <a class="btn btn-primary" href="https://chromewebstore.google.com/detail/nckjedkhineddehjkdlgaibfgpacmhcl">Test real endpoints — Install Free</a>
+      </div>
     </section>
 
     <section class="faq">

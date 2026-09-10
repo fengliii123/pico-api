@@ -83,6 +83,14 @@
     .btn-primary:hover { background: var(--brand-dark); }
     footer { margin-top: 64px; padding: 24px 0 48px; border-top: 1px solid var(--border); font-size: 13px; color: var(--text-muted); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
     footer a { color: var(--text-muted); }
+    @media (max-width: 720px) {
+      nav { flex-wrap: wrap; gap: 8px; }
+      .nav-links { flex-wrap: wrap; gap: 12px; }
+      .hero { padding: 32px 0 16px; }
+      .hero h1 { font-size: 26px; }
+      pre { overflow-x: auto; }
+      .step > div { min-width: 0; }
+    }
   </style>
 </head>
 <body>
@@ -113,7 +121,7 @@
       <div class="step-num">1</div>
       <div>
         <h2>Install a REST client for Chrome</h2>
-        <p>Search <strong>“Pico API”</strong> in the <a href="https://chromewebstore.google.com">Chrome Web Store</a> and install it. Click the toolbar icon and the client opens in a normal browser tab — no sign-up, no workspace setup, and everything stays on your machine.</p>
+        <p><a href="https://chromewebstore.google.com/detail/nckjedkhineddehjkdlgaibfgpacmhcl"><strong>Install Pico API from the Chrome Web Store</strong></a> (or search “Pico API” in the store). Click the toolbar icon and the client opens in a normal browser tab — no sign-up, no workspace setup, and everything stays on your machine.</p>
       </div>
     </div>
 
