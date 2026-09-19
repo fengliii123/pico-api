@@ -7,6 +7,7 @@ import { computed, nextTick, onMounted, ref } from 'vue'
 import { Button } from 'ant-design-vue'
 import { ImportOutlined, ExportOutlined, HistoryOutlined, ThunderboltOutlined, SettingOutlined } from '@ant-design/icons-vue'
 import CollectionTree from '@/components/tree/CollectionTree.vue'
+import RequestTabBar from '@/components/layout/RequestTabBar.vue'
 import RequestEditor from '@/components/request/RequestEditor.vue'
 import ResponsePanel from '@/components/response/ResponsePanel.vue'
 import EnvironmentSelector from '@/components/environment/EnvironmentSelector.vue'
@@ -23,6 +24,7 @@ import { useKeyboardShortcuts, registerShortcut } from '@/composables/useKeyboar
 import { useI18n } from '@/i18n/useI18n'
 import { getTranslation, type Locale } from '@/i18n'
 import { computeSeedRename, type SeedNames } from '@/core/seed'
+import type { SavedRequest } from '@/core/types'
 
 const { t, locale } = useI18n()
 
@@ -35,7 +37,9 @@ const { isCommandPaletteOpen, isQuickSwitchOpen, closeCommandPalette } = useKeyb
 
 onMounted(async () => {
   await Promise.all([collStore.load(), envStore.load()])
-  reqStore.newRequest(null)
+  // Restore the last session's open tabs (saved requests only — unsaved
+  // drafts are session-only by design); fall back to a fresh draft.
+  if (!restoreOpenTabs()) reqStore.newRequest(null)
   void seedExamplesIfFirstRun()
   void syncSeedLocale()
 
@@ -62,6 +66,25 @@ onMounted(async () => {
 const requestEditor = ref<InstanceType<typeof RequestEditor> | null>(null)
 function onResend() {
   requestEditor.value?.send?.()
+}
+
+// Read the persisted tab list and hand the still-existing requests to the
+// store. Any id that no longer resolves (deleted, restored backup) is
+// silently dropped. Corrupt payloads also just fall through to false.
+function restoreOpenTabs(): boolean {
+  try {
+    const raw = localStorage.getItem('mp2:openTabs')
+    if (!raw) return false
+    const saved = JSON.parse(raw) as { ids?: unknown; active?: unknown }
+    if (!Array.isArray(saved.ids)) return false
+    const requests = saved.ids
+      .filter((id): id is string => typeof id === 'string')
+      .map(id => collStore.requestsById.get(id))
+      .filter((r): r is SavedRequest => !!r)
+    return reqStore.restoreTabs(requests, typeof saved.active === 'string' ? saved.active : null)
+  } catch {
+    return false
+  }
 }
 
 // History "Re-run": runEntry() has already loaded the entry into the
@@ -202,6 +225,7 @@ const logoSrc = computed(() => {
       </div>
     </aside>
     <main class="main">
+      <RequestTabBar />
       <RequestEditor ref="requestEditor" />
       <ResponsePanel @resend="onResend" />
     </main>

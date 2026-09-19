@@ -20,12 +20,13 @@
 
 ## 功能特性
 
-- HTTP 请求构造器：method、URL、params、headers、认证（Bearer / Basic / API key）、body（urlencoded / 原始 JSON / XML / 纯文本 / form-data）
+- HTTP 请求构造器：method、URL、params、headers、认证（Bearer / Basic / API key）、body（urlencoded / 原始 JSON / XML / 纯文本 / form-data）；raw 正文为 CodeMirror 编辑器，支持 JSON 键名补全、实时校验、随主题切换的语法配色
 - **流式响应实时渲染** — SSE 与分块响应按 chunk 逐段显示，无需等待完整响应
 - 响应查看器按 Content-Type 智能渲染（JSON 树、格式化 body、headers、cookies、耗时）
 - 环境与全局变量，`{{变量}}` 在 URL、headers、body、脚本中统一替换
 - 前置/后置脚本：沙箱隔离执行，提供 Postman 风格的 `pm` API，支持 `pm.test` 断言
-- 集合管理：树状文件夹（最多 5 层）、复制、移动、撤销/重做
+- 集合管理：树状文件夹（最多 5 层）、复制、移动
+- 请求标签页：多开请求、像浏览器标签一样切换/关闭；已保存请求的标签页重载后自动恢复
 - 请求历史（有上限），支持重发
 - 导入 cURL 命令、OpenAPI/Swagger 规范、ApiFox 项目；导出集合；任意请求复制为 cURL
 - 浏览器 Cookie 转发 + 通过 Service Worker 绕过 CORS
@@ -88,7 +89,7 @@ src/
 │   ├── request/     RequestEditor + KeyValueTable + BodyEditor + MethodDropdown
 │   ├── response/    ResponsePanel + ResponseBodyRenderer
 │   └── common/      StatusTag、EmptyState、CommandPalette、HistoryPanel、SettingsModal 等
-├── stores/          Pinia：collection、request、response、settings、environment、undoRedo
+├── stores/          Pinia：collection、request、response、settings、environment
 ├── db/              IndexedDB schema + CRUD
 ├── core/            纯函数：http、headers、url、body、curl、openapi、scripts 等
 └── utils/           id、format

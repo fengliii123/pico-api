@@ -69,6 +69,12 @@
   --code-key: #1d4ed8;
   --code-value: #374151;
 
+  /* Syntax tokens (CodeMirror body editor) */
+  --syntax-key: #2563eb;
+  --syntax-str: #16a34a;
+  --syntax-num: #ea580c;
+  --syntax-kw: #dc2626;
+
   /* Status-tag token (for status tags) */
   --tag-info-bg: #e6f4ff;
   --tag-info-fg: #0958d9;
@@ -261,6 +267,12 @@ button:active:not(:disabled),
   --code-key: #69b1ff;
   --code-value: #e6e6e6;
 
+  /* Syntax tokens (CodeMirror body editor) */
+  --syntax-key: #7ca9ff;
+  --syntax-str: #5fd18b;
+  --syntax-num: #f59e6c;
+  --syntax-kw: #f37f7f;
+
   /* Status tags */
   --tag-info-bg: #111b26;
   --tag-info-fg: #69b1ff;
@@ -332,6 +344,12 @@ button:active:not(:disabled),
   /* Code */
   --code-key: #2E5C3A;
   --code-value: #2E3F26;
+
+  /* Syntax tokens (CodeMirror body editor) */
+  --syntax-key: #1e56b0;
+  --syntax-str: #0f7a38;
+  --syntax-num: #b4470e;
+  --syntax-kw: #b32626;
 
   /* Status tags */
   --tag-info-bg: #B8DABB;

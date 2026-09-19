@@ -21,12 +21,13 @@ or creating an account.
 
 ## Features
 
-- HTTP request builder: method, URL, params, headers, auth (Bearer / Basic / API key), body (urlencoded / raw JSON / XML / text / form-data)
+- HTTP request builder: method, URL, params, headers, auth (Bearer / Basic / API key), body (urlencoded / raw JSON / XML / text / form-data) with a CodeMirror raw editor — JSON key completion, validity pills, theme-aware syntax colors
 - **Live streaming responses** — SSE and chunked responses render chunk by chunk as they arrive
 - Response viewer with Content-Type-aware rendering (JSON tree, formatted body, headers, cookies, timing)
 - Environments & global variables with `{{variable}}` substitution across URL, headers, body, and scripts
 - Pre-request & post-response scripts with a Postman-style `pm` API (sandboxed iframe), including `pm.test` assertions, `pm.sendRequest` (fetch another endpoint from a script), and `pm.collectionVariables` (aliased to globals — there is no collection-scope store; `pm.setNextRequest` is not supported without a collection runner)
-- Collections: tree-structured folders (up to 5 levels), duplicate, move, undo/redo
+- Collections: tree-structured folders (up to 5 levels), duplicate, move
+- Request tabs: open several requests at once, switch/close them like browser tabs; saved-request tabs survive a reload
 - History of sent requests (capped) with resend
 - Import cURL commands, OpenAPI/Swagger specs, and ApiFox projects; export collections; copy any request as cURL
 - Browser cookie forwarding + CORS bypass via the extension service worker
@@ -91,7 +92,7 @@ src/
 │   ├── request/     RequestEditor + KeyValueTable + BodyEditor + MethodDropdown
 │   ├── response/    ResponsePanel + ResponseBodyRenderer
 │   └── common/      StatusTag, EmptyState, CommandPalette, HistoryPanel, SettingsModal…
-├── stores/          Pinia: collection, request, response, settings, environment, undoRedo
+├── stores/          Pinia: collection, request, response, settings, environment
 ├── db/              IndexedDB schema + CRUD
 ├── core/            pure functions: http, headers, url, body, curl, openapi, scripts…
 └── utils/           id, format

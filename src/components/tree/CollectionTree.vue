@@ -363,7 +363,7 @@ async function deleteFolderPrompt(folderId: string) {
       await collStore.deleteFolder(folderId)
       if (reqStore.draft.id) {
         const r = collStore.requestsById.get(reqStore.draft.id)
-        if (!r) reqStore.newRequest(null)
+        if (!r) reqStore.closeTab(reqStore.draft.id)
       }
     }
   })
@@ -423,7 +423,7 @@ async function deleteRequestPrompt(requestId: string) {
     okType: 'danger',
     onOk: async () => {
       await collStore.deleteRequest(requestId)
-      if (reqStore.draft.id === requestId) reqStore.newRequest(null)
+      reqStore.closeTab(requestId)
     }
   })
 }

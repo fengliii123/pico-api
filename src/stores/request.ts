@@ -8,6 +8,7 @@ import { uid } from '@/utils/id'
 import { deepClone } from '@/utils/clone'
 import { parseQueryParams, urlWithParams } from '@/core/url'
 import { useResponseStore } from './response'
+import { useCollectionStore } from './collection'
 
 // Methods whose spec body is "no body". Body tab is greyed out for these.
 const METHODS_WITHOUT_BODY: ReadonlySet<HttpMethod> = new Set([
@@ -104,9 +105,6 @@ function draftFromSaved(r: SavedRequest): DraftRequest {
 export const useRequestStore = defineStore('request', () => {
   const draft = ref<DraftRequest>(emptyDraft())
   const dirty = ref(false)
-  // Monotonic counter bumped on every user edit — lets undo tracking watch
-  // a scalar instead of deep-walking the entire draft tree.
-  const editGeneration = ref(0)
 
   // Per-request in-memory draft cache. Keyed by request id (or NEW_REQUEST_KEY
   // for unsaved drafts) so switching A → B → A restores A's un-saved edits
@@ -116,18 +114,41 @@ export const useRequestStore = defineStore('request', () => {
   // reactivity, and this avoids wrapping File refs in proxies.
   const draftCache = shallowRef(new Map<string, DraftRequest>())
 
+  // Open-tab bookkeeping for the request tab bar. Elements are cache keys
+  // (request ids, or NEW_REQUEST_KEY for the single unsaved-draft tab);
+  // the active tab is always cacheKeyFor(draft.id) — the draft IS the
+  // active tab. Saved ids are persisted to localStorage so the last
+  // session's tabs come back; unsaved drafts are session-only by design.
+  const tabs = ref<string[]>([])
+
+  // Bumped on every draftCache membership change — shallowRef Map
+  // mutations don't trigger reactivity on their own, and the tab bar
+  // derives per-tab dirty flags from cache membership.
+  const cacheVersion = ref(0)
+
   function cacheKeyFor(id: string | null): string {
     return id ?? NEW_REQUEST_KEY
   }
 
+  function persistTabs() {
+    try {
+      const ids = tabs.value.filter(k => k !== NEW_REQUEST_KEY)
+      localStorage.setItem('mp2:openTabs', JSON.stringify({ ids, active: cacheKeyFor(draft.value.id) }))
+    } catch { /* storage unavailable — tabs just won't survive reload */ }
+  }
+
+  function ensureTab(key: string) {
+    if (!tabs.value.includes(key)) tabs.value = [...tabs.value, key]
+  }
+
   function markEdited() {
-    editGeneration.value++
     dirty.value = true
     // Persist the current draft into the per-id cache so switching away and
     // back keeps the edits. Snapshot detaches Vue's reactive proxy so later
     // in-place mutations don't silently mutate the cached copy.
     const key = cacheKeyFor(draft.value.id)
     draftCache.value.set(key, snapshotDraft(draft.value))
+    cacheVersion.value++
   }
 
   const isNew = computed(() => draft.value.id === null)
@@ -137,12 +158,15 @@ export const useRequestStore = defineStore('request', () => {
     // and shouldn't get a stale prior new draft resurrected when they switch
     // away and back through other requests.
     draftCache.value.delete(NEW_REQUEST_KEY)
+    cacheVersion.value++
     draft.value = { ...emptyDraft(), folderId }
     dirty.value = false
     // Switch the response cache slot to the new-request sentinel so
     // send results go to the right bucket and switching away/back
     // correctly shows idle (not a stale response from a previous request).
     useResponseStore().setActive(null)
+    ensureTab(NEW_REQUEST_KEY)
+    persistTabs()
   }
 
   function setFolder(folderId: string | null) {
@@ -158,6 +182,7 @@ export const useRequestStore = defineStore('request', () => {
     // Replace the unsaved-draft slot — import starts a fresh unsaved draft,
     // any prior NEW_REQUEST_KEY content is stale.
     draftCache.value.delete(NEW_REQUEST_KEY)
+    cacheVersion.value++
     draft.value = {
       id: null,
       folderId: d.folderId ?? null,
@@ -175,9 +200,20 @@ export const useRequestStore = defineStore('request', () => {
     // Imported requests are not yet saved — use null sentinel so send
     // results go into the new-request slot.
     useResponseStore().setActive(null)
+    ensureTab(NEW_REQUEST_KEY)
+    persistTabs()
   }
 
   function loadFromSaved(r: SavedRequest) {
+    // Opening a saved request replaces a pristine unsaved-draft tab (one
+    // that was never edited) so the bar doesn't accumulate an empty tab;
+    // a dirty draft keeps its tab so unsaved edits survive.
+    if (!draftCache.value.has(NEW_REQUEST_KEY)) {
+      const ni = tabs.value.indexOf(NEW_REQUEST_KEY)
+      if (ni !== -1) tabs.value.splice(ni, 1)
+    }
+    ensureTab(r.id)
+    persistTabs()
     // Restore un-saved edits if we have a cached draft for this id. The
     // cached snapshot is by definition newer than the IndexedDB row (it was
     // written by markEdited since the last save), so it wins on switch-back.
@@ -314,6 +350,10 @@ export const useRequestStore = defineStore('request', () => {
       // the assigned id, and a stale NEW_REQUEST_KEY copy would otherwise
       // shadow future fresh imports.
       draftCache.value.delete(NEW_REQUEST_KEY)
+      // The unsaved-draft tab just became this request's tab — swap the
+      // key in place so it keeps its position in the bar.
+      const ti = tabs.value.indexOf(NEW_REQUEST_KEY)
+      if (ti !== -1) tabs.value.splice(ti, 1, id)
     }
     draft.value.id = id
     dirty.value = false
@@ -322,22 +362,104 @@ export const useRequestStore = defineStore('request', () => {
     // with dirty=false (a cache hit here would falsely flag the request
     // as modified).
     draftCache.value.delete(id)
+    cacheVersion.value++
+    persistTabs()
   }
 
   // Drop a request's cached draft. Called when the request itself is
   // deleted so we don't keep growing the cache with dead ids.
   function forgetCached(id: string) {
     draftCache.value.delete(id)
+    cacheVersion.value++
+  }
+
+  function isTabDirty(key: string): boolean {
+    void cacheVersion.value
+    return draftCache.value.has(key)
+  }
+
+  // Label for a tab: the active tab shows the live draft name; a
+  // background unsaved tab shows its cached snapshot's name; saved ids
+  // resolve through the collection store. Requests that no longer exist
+  // fall back to the default name — the tab self-heals (drops) on click.
+  function tabLabel(key: string): string {
+    void cacheVersion.value
+    if (key === cacheKeyFor(draft.value.id)) return draft.value.name
+    if (key === NEW_REQUEST_KEY) {
+      return draftCache.value.get(NEW_REQUEST_KEY)?.name ?? 'Untitled Request'
+    }
+    return useCollectionStore().requestsById.get(key)?.name ?? 'Untitled Request'
+  }
+
+  function activateTab(key: string) {
+    if (key === cacheKeyFor(draft.value.id)) return
+    if (key === NEW_REQUEST_KEY) {
+      const cached = draftCache.value.get(NEW_REQUEST_KEY)
+      if (cached) {
+        draft.value = snapshotDraft(cached)
+        dirty.value = true
+      } else {
+        draft.value = { ...emptyDraft() }
+        dirty.value = false
+      }
+      useResponseStore().setActive(null)
+      persistTabs()
+      return
+    }
+    const r = useCollectionStore().requestsById.get(key)
+    if (r) {
+      loadFromSaved(r)
+    } else {
+      closeTab(key)
+    }
+  }
+
+  // Close a tab and discard its cached unsaved edits. Closing the active
+  // tab activates a neighbor; closing the last one falls back to a fresh
+  // unsaved draft (the editor is never empty).
+  function closeTab(key: string) {
+    const idx = tabs.value.indexOf(key)
+    if (idx === -1) return
+    const wasActive = key === cacheKeyFor(draft.value.id)
+    draftCache.value.delete(key)
+    cacheVersion.value++
+    tabs.value = tabs.value.filter(k => k !== key)
+    if (tabs.value.length === 0) {
+      newRequest(null)
+      return
+    }
+    if (wasActive) {
+      activateTab(tabs.value[Math.min(idx, tabs.value.length - 1)])
+    } else {
+      persistTabs()
+    }
+  }
+
+  // Restore the previous session's tabs. `requests` must be pre-resolved
+  // by the caller (ids that still exist in the collection); the active
+  // request is loaded into the draft, the rest occupy tabs and load
+  // lazily on click. Returns false when there is nothing to restore.
+  function restoreTabs(requests: SavedRequest[], activeId: string | null): boolean {
+    if (requests.length === 0) return false
+    tabs.value = requests.map(r => r.id)
+    loadFromSaved(requests.find(r => r.id === activeId) ?? requests[requests.length - 1])
+    return true
   }
 
   return {
     draft,
     dirty,
-    editGeneration,
     isNew,
+    tabs,
+    cacheVersion,
     newRequest,
     loadFromSaved,
     loadFromDraft,
+    activateTab,
+    closeTab,
+    restoreTabs,
+    isTabDirty,
+    tabLabel,
     setMethod,
     setUrl,
     setName,

@@ -3,7 +3,7 @@
 //   - urlencoded: x-www-form-urlencoded key/value rows
 //   - formdata: multipart/form-data with text or file rows
 //   - raw: free-form text with optional syntax mode (json / xml / text)
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { Input, Select, Button, Switch, Radio, message } from 'ant-design-vue'
 import { DeleteOutlined, FileOutlined, PlusOutlined, FormatPainterOutlined, CompressOutlined, CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons-vue'
 import KeyValueTable from './KeyValueTable.vue'
@@ -15,7 +15,16 @@ import type {
 } from '@/core/types'
 import { useI18n } from '@/i18n/useI18n'
 import { fmt } from '@/i18n'
-import { escapeHtml, highlightJsonLike } from '@/utils/highlight'
+import { Compartment, EditorState } from '@codemirror/state'
+import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightSpecialChars, drawSelection, dropCursor, rectangularSelection, crosshairCursor, highlightActiveLine, placeholder } from '@codemirror/view'
+import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
+import { json, jsonLanguage } from '@codemirror/lang-json'
+import { xml } from '@codemirror/lang-xml'
+import { syntaxHighlighting, bracketMatching, indentOnInput, HighlightStyle, syntaxTree } from '@codemirror/language'
+import { closeBrackets, autocompletion, closeBracketsKeymap, completionKeymap } from '@codemirror/autocomplete'
+import type { CompletionContext, CompletionResult } from '@codemirror/autocomplete'
+import { tags as hlTags } from '@lezer/highlight'
+import type { Extension } from '@codemirror/state'
 
 const { t } = useI18n()
 const props = defineProps<{
@@ -265,31 +274,181 @@ function prettyXmlText() {
   }
 }
 
-// JSON syntax highlighter for the raw editor overlay. Mirrors the
-// We can't reuse CodeMirror here — @codemirror/lang-javascript's dist
-// bundle is corrupted on this machine (npm reinstall doesn't help —
-// some macOS-level process compresses the file), so we fall back to a
-// textarea + transparent overlay technique with the shared highlighter
-// (same tokens as the response panel).
-const highlightedRaw = computed(() => {
-  // XML / Text mode: no tokenization, just escape so the overlay shows
-  // the same text safely. JSON path uses the same highlighter as the
-  // response panel.
-  const text = rawText.value || ''
-  return rawType.value === 'json' ? highlightJsonLike(text) : escapeHtml(text)
-})
+//
+// Raw editor — CodeMirror 6 (line numbers, bracket matching, close-brackets,
+// completion). Same wiring pattern as ScriptEditor: an updateListener emits
+// doc changes, an inbound watch re-syncs external writes (pretty/minify
+// buttons, switching requests) with a doc-diff guard. The host div only
+// exists while mode === 'raw' (v-if in the template), so the view is
+// created on entering raw mode and destroyed on leaving it.
+const cmHost = ref<HTMLDivElement | null>(null)
+let cmView: EditorView | null = null
+const languageConf = new Compartment()
+const readOnlyConf = new Compartment()
 
-// Keep the overlay scroll in sync with the textarea — they're stacked on
-// top of each other so any scroll offset must match.
-const rawOverlayRef = ref<HTMLPreElement | null>(null)
-const rawTextareaRef = ref<HTMLTextAreaElement | null>(null)
-function syncRawScroll() {
-  const ta = rawTextareaRef.value
-  const pre = rawOverlayRef.value
-  if (!ta || !pre) return
-  pre.scrollTop = ta.scrollTop
-  pre.scrollLeft = ta.scrollLeft
+function languageExtension(rt: RawType): Extension {
+  if (rt === 'json') {
+    // lang-json ships no completion source of its own — provide a small
+    // one: while typing a property name, suggest names already used
+    // elsewhere in the document (repeat keys are the common case).
+    return [json(), jsonLanguage.data.of({ autocomplete: jsonPropertyCompletion })]
+  }
+  if (rt === 'xml') return xml()
+  return []
 }
+
+function jsonPropertyCompletion(context: CompletionContext): CompletionResult | null {
+  const tree = syntaxTree(context.state)
+  if (tree.resolveInner(context.pos, -1).name !== 'PropertyName') return null
+  const word = context.matchBefore(/[^"]*/)
+  if (!word) return null
+  const names = new Set<string>()
+  tree.iterate({
+    enter(node) {
+      if (node.name === 'PropertyName' && !(node.from <= context.pos && context.pos <= node.to)) {
+        names.add(context.state.sliceDoc(node.from, node.to).replace(/^"|"$/g, ''))
+      }
+    }
+  })
+  if (names.size === 0) return null
+  return {
+    from: word.from,
+    options: [...names].sort().map(name => ({ label: name, type: 'property' })),
+    validFor: /^[^"]*$/
+  }
+}
+
+// Token colors bind to the --syntax-* variables theme.css defines per theme
+// (light/dark/eye), so highlighting follows the app theme without touching
+// the editor. `tags` is aliased to hlTags to avoid clashing with the i18n t.
+const syntaxStyle = HighlightStyle.define([
+  { tag: [hlTags.propertyName, hlTags.attributeName, hlTags.variableName], color: 'var(--syntax-key, #2563eb)' },
+  { tag: [hlTags.string, hlTags.attributeValue, hlTags.special(hlTags.string)], color: 'var(--syntax-str, #16a34a)' },
+  { tag: hlTags.number, color: 'var(--syntax-num, #ea580c)' },
+  { tag: [hlTags.bool, hlTags.null, hlTags.keyword, hlTags.tagName], color: 'var(--syntax-kw, #dc2626)' },
+  { tag: [hlTags.punctuation, hlTags.bracket, hlTags.comment], color: 'var(--text-tertiary)' }
+])
+
+function createRawEditor(): EditorView | null {
+  if (!cmHost.value) return null
+  const state = EditorState.create({
+    doc: rawText.value,
+    extensions: [
+      lineNumbers(),
+      highlightActiveLineGutter(),
+      highlightSpecialChars(),
+      history(),
+      drawSelection(),
+      dropCursor(),
+      EditorState.allowMultipleSelections.of(true),
+      indentOnInput(),
+      syntaxHighlighting(syntaxStyle),
+      bracketMatching(),
+      closeBrackets(),
+      autocompletion(),
+      rectangularSelection(),
+      crosshairCursor(),
+      highlightActiveLine(),
+      keymap.of([
+        ...closeBracketsKeymap,
+        ...defaultKeymap,
+        ...historyKeymap,
+        ...completionKeymap
+      ]),
+      languageConf.of(languageExtension(rawType.value)),
+      readOnlyConf.of([
+        EditorState.readOnly.of(!!props.disabled),
+        EditorView.editable.of(!props.disabled)
+      ]),
+      placeholder(t.value.requestBodyPlaceholder),
+      EditorView.updateListener.of((update) => {
+        if (update.docChanged) {
+          rawText.value = update.state.doc.toString()
+        }
+      }),
+      // Theme-aware chrome — mirrors ScriptEditor's theme block: every
+      // color is a CSS variable, so light/dark/eye switching repaints the
+      // editor with no CodeMirror reconfigure.
+      EditorView.theme(
+        {
+          '&': {
+            height: '100%',
+            fontSize: '12px',
+            backgroundColor: 'var(--bg-base)',
+            color: 'var(--text-primary)'
+          },
+          '.cm-scroller': {
+            overflow: 'auto',
+            fontFamily: '"SF Mono", "Menlo", "Monaco", "Consolas", monospace'
+          },
+          '.cm-content': {
+            padding: '8px 0',
+            caretColor: 'var(--accent)'
+          },
+          '.cm-gutters': {
+            backgroundColor: 'var(--bg-subtle)',
+            color: 'var(--text-tertiary)',
+            borderRight: '1px solid var(--border-base)'
+          },
+          '.cm-lineNumbers .cm-gutterElement': {
+            padding: '0 8px'
+          },
+          '.cm-activeLine': {
+            backgroundColor: 'var(--bg-muted)'
+          },
+          '.cm-activeLineGutter': {
+            backgroundColor: 'var(--bg-muted)',
+            color: 'var(--text-secondary)'
+          },
+          '.cm-selectionBackground, ::selection': {
+            backgroundColor: 'var(--accent-soft-bg)'
+          }
+        },
+        { dark: false }
+      )
+    ]
+  })
+  return new EditorView({ state, parent: cmHost.value })
+}
+
+onMounted(() => {
+  if (mode.value === 'raw') {
+    nextTick(() => { cmView = createRawEditor() })
+  }
+})
+onUnmounted(() => {
+  cmView?.destroy()
+  cmView = null
+})
+watch(mode, (m) => {
+  if (m === 'raw') {
+    nextTick(() => { if (!cmView) cmView = createRawEditor() })
+  } else {
+    cmView?.destroy()
+    cmView = null
+  }
+})
+watch(rawType, (rt) => {
+  cmView?.dispatch({ effects: languageConf.reconfigure(languageExtension(rt)) })
+})
+watch(() => props.disabled, (d) => {
+  cmView?.dispatch({
+    effects: readOnlyConf.reconfigure([
+      EditorState.readOnly.of(!!d),
+      EditorView.editable.of(!d)
+    ])
+  })
+})
+// External doc changes — replace the doc only when it differs, otherwise
+// user typing (emit → prop change → this watch) would loop.
+watch(() => props.modelValue.rawText, (v) => {
+  const text = v ?? ''
+  if (cmView && cmView.state.doc.toString() !== text) {
+    cmView.dispatch({
+      changes: { from: 0, to: cmView.state.doc.length, insert: text }
+    })
+  }
+})
 
 </script>
 
@@ -468,25 +627,7 @@ function syncRawScroll() {
         class="raw-editor-wrap"
         :class="{ 'raw-editor-error': rawError }"
       >
-        <pre
-          ref="rawOverlayRef"
-          class="raw-editor-overlay"
-          v-html="highlightedRaw"
-          aria-hidden="true"
-        />
-        <textarea
-          ref="rawTextareaRef"
-          class="raw-editor-input"
-          :value="rawText"
-          :placeholder="t.requestBodyPlaceholder"
-          :disabled="props.disabled"
-          spellcheck="false"
-          autocomplete="off"
-          autocorrect="off"
-          autocapitalize="off"
-          @input="(e: InputEvent) => rawText = (e.target as HTMLTextAreaElement).value"
-          @scroll="syncRawScroll"
-        />
+        <div ref="cmHost" class="raw-editor-cm" />
       </div>
     </div>
   </div>
@@ -565,59 +706,13 @@ function syncRawScroll() {
   background: var(--bg-base);
   border: 1px solid var(--border-base);
   border-radius: var(--radius-md);
-  overflow: auto;
+  overflow: hidden;
 }
 .raw-editor-wrap.raw-editor-error {
   border-color: var(--status-danger);
 }
-/* Stack a transparent <textarea> on top of a <pre v-html> overlay. The
- * textarea carries the caret and selection but its text is invisible;
- * the overlay paints the colored tokens. Font, padding, line-height and
- * white-space must match exactly or the two layers drift. */
-.raw-editor-overlay,
-.raw-editor-input {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  width: 100%;
+.raw-editor-cm {
   height: 100%;
-  margin: 0;
-  padding: var(--space-4);
-  border: 0;
-  font-family: 'SF Mono', 'Menlo', ui-monospace, monospace;
-  font-size: 12px;
-  line-height: 1.6;
-  white-space: pre-wrap;
-  word-break: break-all;
-  overflow: auto;
-  background: transparent;
-  -webkit-text-fill-color: currentColor;
-}
-.raw-editor-overlay {
-  pointer-events: none;
-  color: var(--text-primary);
-}
-.raw-editor-overlay :deep(.tk-key) { color: var(--syntax-key, #2563eb); }
-.raw-editor-overlay :deep(.tk-str) { color: var(--syntax-str, #16a34a); }
-.raw-editor-overlay :deep(.tk-num) { color: var(--syntax-num, #ea580c); }
-.raw-editor-overlay :deep(.tk-kw) { color: var(--syntax-kw, #dc2626); }
-.raw-editor-overlay :deep(.tk-punc) { color: var(--text-tertiary); }
-.raw-editor-input {
-  color: transparent;
-  caret-color: var(--text-primary);
-  resize: none;
-  outline: none;
-}
-.raw-editor-input::placeholder {
-  color: var(--text-tertiary);
-}
-.raw-editor-input::selection {
-  background: var(--accent-soft-bg);
-}
-.raw-editor-input:disabled {
-  cursor: not-allowed;
 }
 
 .fd-row {

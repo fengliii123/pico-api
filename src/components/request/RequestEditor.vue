@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Button, Input, Tabs, Drawer, Segmented, message } from 'ant-design-vue'
-import { CloudUploadOutlined, SendOutlined, PlusOutlined, FolderOpenOutlined, UndoOutlined, RedoOutlined, CopyOutlined, MoreOutlined } from '@ant-design/icons-vue'
+import { CloudUploadOutlined, SendOutlined, PlusOutlined, FolderOpenOutlined, CopyOutlined, MoreOutlined } from '@ant-design/icons-vue'
 import MethodDropdown from './MethodDropdown.vue'
 import KeyValueTable from './KeyValueTable.vue'
 import BodyEditor from './BodyEditor.vue'
@@ -12,13 +12,12 @@ import FolderPicker from '@/components/tree/FolderPicker.vue'
 import { useRequestStore } from '@/stores/request'
 import { useCollectionStore } from '@/stores/collection'
 import { useEnvironmentStore } from '@/stores/environment'
-import { useUndoRedoStore } from '@/stores/undoRedo'
 import { useResponseStore } from '@/stores/response'
 import { processHeaders } from '@/core/headers'
 import { deepClone } from '@/utils/clone'
 import { escapeHtml } from '@/utils/highlight'
 import { useRequestExecution } from '@/composables/useRequestExecution'
-import type { KeyValueRow, FormDataRow, RequestBody, HttpMethod, SavedRequest, AuthConfig, RequestScripts, RequestSettings, DraftRequest } from '@/core/types'
+import type { KeyValueRow, FormDataRow, RequestBody, HttpMethod, SavedRequest, AuthConfig, RequestScripts, RequestSettings } from '@/core/types'
 import { useI18n } from '@/i18n/useI18n'
 import { fmt } from '@/i18n'
 
@@ -26,7 +25,6 @@ const { t } = useI18n()
 const reqStore = useRequestStore()
 const collStore = useCollectionStore()
 const envStore = useEnvironmentStore()
-const undoRedoStore = useUndoRedoStore()
 const resStore = useResponseStore()
 const { send, cancel } = useRequestExecution()
 
@@ -221,72 +219,6 @@ const folderPickerOpen = ref(false)
 // Reset to false after each save attempt.
 let folderChoiceConfirmed = false
 
-// Debounce helper for undo tracking
-let undoTimer: ReturnType<typeof setTimeout> | null = null
-const TRACK_DELAY = 1000 // Track changes after 1 second of inactivity
-
-// Suppress flag: when we're applying an undo/redo, the draft watch fires
-// (we just reassigned reqStore.draft) and would, after TRACK_DELAY, push
-// the *current* draft back onto `past` — which has the side effect of
-// clearing `future`, breaking redo. We flip this flag for the duration of
-// the undo/redo call so trackChange() is a no-op while it's set.
-let suppressTracking = 0
-
-function trackChange(description: string) {
-  if (suppressTracking > 0) return
-  if (undoTimer) clearTimeout(undoTimer)
-  undoTimer = setTimeout(() => {
-    if (suppressTracking > 0) return
-    undoRedoStore.push(reqStore.draft, description)
-  }, TRACK_DELAY)
-}
-
-// Watch for draft edits and track for undo — editGeneration bumps on every
-// store setter so we avoid deep-walking the entire draft on each keystroke.
-watch(
-  () => reqStore.editGeneration,
-  () => {
-    if (reqStore.dirty) {
-      trackChange('Edit request')
-    }
-  }
-)
-
-// When the user loads a different saved request (or hits "New"), reset
-// the undo baseline so the first edit on the new draft can be undone.
-// Without this, undo would jump across requests (very confusing).
-watch(
-  () => reqStore.draft.id,
-  () => {
-    undoRedoStore.reset(reqStore.draft)
-  }
-)
-
-// Shared undo/redo body: apply a restored snapshot to the draft without
-// re-tracking it (which would corrupt the history stacks).
-function applySnapshot(snapshot: DraftRequest | null, successMsg: string) {
-  if (!snapshot) return
-  suppressTracking++
-  reqStore.draft = { ...snapshot }
-  reqStore.dirty = true
-  // Cancel any pending trackChange from prior edits — it would push a
-  // stale snapshot on top of the just-restored state.
-  if (undoTimer) {
-    clearTimeout(undoTimer)
-    undoTimer = null
-  }
-  suppressTracking--
-  message.success(successMsg)
-}
-
-function undo() {
-  applySnapshot(undoRedoStore.undo(reqStore.draft), t.value.undo)
-}
-
-function redo() {
-  applySnapshot(undoRedoStore.redo(reqStore.draft), t.value.redo)
-}
-
 async function onFolderPicked(folderId: string | null) {
   // We bypass setFolder (which would toggle dirty) because the user is
   // picking a folder *in order to save* — they don't want a dirty dot.
@@ -312,9 +244,6 @@ async function saveToOtherFolder() {
 
 function newRequest() {
   reqStore.newRequest(draft.value.folderId)
-  // Seed the undo baseline so the first edit on the new request can be
-  // undone back to its just-created state.
-  undoRedoStore.reset(reqStore.draft)
 }
 
 // AntD Tabs default-active-key is uncontrolled — sync tab when request/body mode changes.
@@ -382,18 +311,6 @@ function onKeyDown(e: KeyboardEvent) {
     void send()
     return
   }
-  // Cmd/Ctrl+Z — undo
-  if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
-    e.preventDefault()
-    if (undoRedoStore.canUndo) undo()
-    return
-  }
-  // Cmd/Ctrl+Shift+Z / Cmd/Ctrl+Y — redo
-  if ((e.metaKey || e.ctrlKey) && ((e.key === 'z' && e.shiftKey) || e.key === 'y')) {
-    e.preventDefault()
-    if (undoRedoStore.canRedo) redo()
-    return
-  }
   // Cmd/Ctrl+D — duplicate current request
   if ((e.metaKey || e.ctrlKey) && (e.key === 'd' || e.key === 'D')) {
     e.preventDefault()
@@ -423,12 +340,6 @@ defineExpose({ send })
         <Button @click="newRequest" title="New (clears draft)">
           <template #icon><PlusOutlined /></template>
           {{ t.new }}
-        </Button>
-        <Button @click="undo" :disabled="!undoRedoStore.canUndo" title="Undo (⌘Z)" class="icon-btn">
-          <template #icon><UndoOutlined /></template>
-        </Button>
-        <Button @click="redo" :disabled="!undoRedoStore.canRedo" title="Redo (⌘⇧Z)" class="icon-btn">
-          <template #icon><RedoOutlined /></template>
         </Button>
         <Button @click="duplicateCurrentRequest" title="Duplicate (⌘D)" class="icon-btn">
           <template #icon><CopyOutlined /></template>
@@ -629,7 +540,7 @@ defineExpose({ send })
   gap: var(--space-1);
   flex: 0 0 auto;
 }
-/* Icon-only buttons (undo/redo/duplicate) lose their text label so they
+/* Icon-only buttons (duplicate) lose their text label so they
    shrink to a square — visually consistent with the segmented control
    pattern, less crowded than labelled buttons. */
 .topbar-group .icon-btn.ant-btn {

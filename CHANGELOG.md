@@ -4,6 +4,27 @@ All notable changes to Pico API are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Request tabs.** Open several requests at once and switch between them
+  like browser tabs — every opened request (tree click, command palette,
+  import) gets a tab with a dirty dot for unsaved edits; close with the ×
+  or middle click. Tabs of saved requests come back after a reload.
+- **The raw body editor is a real code editor now** (CodeMirror): line
+  numbers, bracket matching and auto-close, JSON key completion that
+  suggests property names already used in the document, theme-aware
+  syntax colors, and a read-only lock for bodyless methods. The
+  Pretty/Minify buttons and validity pills work as before.
+
+### Removed
+
+- **Undo/redo of request edits.** Field-level undo duplicated the
+  browser's native text undo and the draft auto-save, so the buttons,
+  ⌘Z/⌘⇧Z shortcuts, and history machinery are gone. Native ⌘Z inside
+  inputs keeps working.
+
 ## [1.0.8] — 2026-09-08
 
 Correctness and hardening release (full code review pass).

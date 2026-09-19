@@ -138,8 +138,6 @@ const shortcuts = computed(() => [
   { key: '⌘/Ctrl + S', action: t.value.shortcutSaveRequest },
   { key: '⌘/Ctrl + Enter', action: t.value.shortcutSendRequest },
   { key: '⌘/Ctrl + D', action: t.value.shortcutDuplicateRequest },
-  { key: '⌘/Ctrl + Z', action: t.value.shortcutUndo },
-  { key: '⌘/Ctrl + ⇧ + Z', action: t.value.shortcutRedo },
   { key: '⌘/Ctrl + ⇧ + H', action: t.value.shortcutOpenHistory },
   { key: '⌘/Ctrl + ⇧ + K', action: t.value.shortcutSwitchEnvironment },
   { key: 'Esc', action: t.value.shortcutCloseModal }

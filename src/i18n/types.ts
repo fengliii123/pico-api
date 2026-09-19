@@ -34,6 +34,7 @@ export interface Translations {
   new: string
   more: string
   close: string
+  closeTab: string
   confirm: string
   download: string
   refresh: string
@@ -332,8 +333,6 @@ export interface Translations {
   requestNotFound: string
   cannotMoveFolder: string
   moveFailed: string
-  undo: string
-  redo: string
   requestDuplicated: string
   nameAlreadyExists: string
   copyFailed: string
@@ -428,8 +427,6 @@ export interface Translations {
   shortcutSaveRequest: string
   shortcutSendRequest: string
   shortcutDuplicateRequest: string
-  shortcutUndo: string
-  shortcutRedo: string
   shortcutOpenHistory: string
   shortcutSwitchEnvironment: string
   shortcutCloseModal: string
