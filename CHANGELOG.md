@@ -6,6 +6,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.1.0] — 2026-10-14
+
 ### Added
 
 - **Request tabs.** Open several requests at once and switch between them
@@ -17,6 +19,48 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   suggests property names already used in the document, theme-aware
   syntax colors, and a read-only lock for bodyless methods. The
   Pretty/Minify buttons and validity pills work as before.
+- **Recent URLs in the URL bar.** Focusing the URL input lists the last
+  eight distinct URLs from history (variable form included) — one click
+  to refill.
+- **Response body line filter.** Pretty/Raw views gain a filter box that
+  narrows the body to matching lines with a live match count.
+- **Double-click a tab to rename** the underlying request (saved requests
+  go through the usual conflict check).
+- **Retry button on network errors.** The error banner can re-send the
+  request without scrolling back to Send.
+- Method tags in the tree are fixed-width for vertical alignment, and
+  folder rows get a surface tint so the hierarchy reads at a glance.
+
+### Fixed
+
+- Switching requests while a slow response is in flight no longer writes
+  that response (or its history entry) into the wrong request's slot.
+- Timeouts are reported as timeouts on every transport (direct fetch,
+  service worker, streaming) instead of surfacing as "request aborted".
+- Duplicating a request from the tree carries auth, scripts and settings
+  along; drag-and-drop reorder can insert between siblings instead of
+  only at the end; a failed rename reverts the tree label.
+- Editing a URL keeps params through mid-typing states; switching
+  POST → GET → POST restores the typed body instead of reseeding.
+- Large JSON responses (> 1 MB) skip the synchronous pretty-print pass
+  that froze the UI; streaming bodies that exactly hit the size cap are
+  no longer reported as truncated.
+- The script sandbox recovers after a load failure instead of staying
+  broken until reload; a disconnecting service worker during a stream
+  ends the spinner instead of hanging forever.
+- An IndexedDB upgrade blocked by another Pico API tab now surfaces an
+  actionable message instead of hanging the app silently.
+- Keyboard shortcuts no longer fire behind open modals, drawers or
+  popovers; "New" asks before discarding unsaved edits, including edits
+  living in a background unsaved tab.
+- Empty-value headers are sent as-is instead of being silently dropped;
+  `#fragment?query` URLs no longer leak the fragment into Params.
+
+### Changed
+
+- Dark theme: tertiary text contrast raised, error red desaturated.
+- Response panel and body toolbar spacing tightened; history empty state
+  gains a "clear filters" shortcut.
 
 ### Removed
 
