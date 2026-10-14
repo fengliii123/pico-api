@@ -240,9 +240,13 @@ export function useRequestExecution() {
     }
   }
 
-  async function recordHistory(status: number, time: number, size: number) {
+  async function recordHistory(
+    d: DraftRequest,
+    status: number,
+    time: number,
+    size: number
+  ) {
     if (!settingsStore.autoSaveHistory) return
-    const d = reqStore.draft
     const entry: HistoryEntry = {
       id: uid(),
       requestId: d.id,
@@ -282,6 +286,9 @@ export function useRequestExecution() {
     // land in THIS request's cache — not whatever is active when it returns.
     const slotKey = draft.id ?? NEW_REQUEST_KEY
     const sendRequest = makeSendRequestExecutor(signal)
+    // Same pinning for history: record the draft AS SENT, not whatever is
+    // loaded in the editor when the response eventually lands.
+    const sentDraft = draft
 
     // Pre-validate URL before scripts run (so scripts don't modify an
     // invalid URL). Variables are NOT fully checked yet — the pre-request
@@ -365,7 +372,7 @@ export function useRequestExecution() {
       } else {
         resStore.setResult(result, post.testResults, { preRequest: preRequest.logs, postResponse: post.logs }, slotKey)
       }
-      await recordHistory(result.status, result.time, result.body.size)
+      await recordHistory(sentDraft, result.status, result.time, result.body.size)
 
       // One-time rating prompt after enough successful sends.
       recordSuccessfulSend()

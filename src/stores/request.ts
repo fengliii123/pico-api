@@ -405,6 +405,9 @@ export const useRequestStore = defineStore('request', () => {
     if (key === cacheKeyFor(draft.value.id)) return
     if (key === NEW_REQUEST_KEY) {
       const cached = draftCache.value.get(NEW_REQUEST_KEY)
+      // Switching drafts invalidates any body stashed for the previous one
+      // (loadFromSaved/newRequest clear it; this branch used to miss it).
+      stashedBody = null
       if (cached) {
         draft.value = snapshotDraft(cached)
         dirty.value = true
@@ -432,6 +435,9 @@ export const useRequestStore = defineStore('request', () => {
     if (idx === -1) return
     const wasActive = key === cacheKeyFor(draft.value.id)
     draftCache.value.delete(key)
+    // Drop the closed tab's cached response too — a big body (streaming
+    // chunks included) would otherwise sit in the response Map all session.
+    useResponseStore().forget(key)
     cacheVersion.value++
     tabs.value = tabs.value.filter(k => k !== key)
     if (tabs.value.length === 0) {
@@ -460,6 +466,10 @@ export const useRequestStore = defineStore('request', () => {
     draft,
     dirty,
     isNew,
+    // True when a background unsaved tab holds edits — "New" would destroy
+    // them even while a SAVED tab is active, so the editor's discard guard
+    // checks this too.
+    hasCachedNewDraft: computed(() => draftCache.value.has(NEW_REQUEST_KEY)),
     tabs,
     cacheVersion,
     newRequest,

@@ -145,6 +145,14 @@ export const useResponseStore = defineStore('response', () => {
     activeId.value = null
   }
 
+  // Drop one slot's cached response (called when a request tab is closed
+  // so large bodies don't linger in the Map for the rest of the session).
+  function forget(key: string) {
+    const newCache = new Map(cache.value)
+    newCache.delete(key)
+    cache.value = newCache
+  }
+
   return {
     state,
     activeId,
@@ -155,6 +163,7 @@ export const useResponseStore = defineStore('response', () => {
     appendStreamChunk,
     finishStreaming,
     reset,
-    clearAll
+    clearAll,
+    forget
   }
 })

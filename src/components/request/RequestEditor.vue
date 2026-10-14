@@ -243,9 +243,14 @@ async function saveToOtherFolder() {
   folderPickerOpen.value = true
 }
 
-// "New" wipes the unsaved-draft slot — confirm before destroying real edits.
+// "New" (and Duplicate) wipes the unsaved-draft slot — confirm before
+// destroying real edits. Guard BOTH the visible unsaved tab and a background
+// unsaved tab (its cached edits live under NEW_REQUEST_KEY even while a
+// saved tab is active).
 function confirmDiscardDraft(): Promise<boolean> {
-  if (!(reqStore.isNew && reqStore.dirty)) return Promise.resolve(true)
+  const currentDirty = reqStore.isNew && reqStore.dirty
+  const backgroundDirty = !reqStore.isNew && reqStore.hasCachedNewDraft
+  if (!currentDirty && !backgroundDirty) return Promise.resolve(true)
   return new Promise(resolve => {
     Modal.confirm({
       title: t.value.discardDraftTitle,
@@ -296,6 +301,7 @@ async function duplicateCurrentRequest() {
     message.warning(t.value.nothingToDuplicate)
     return
   }
+  if (!(await confirmDiscardDraft())) return
   reqStore.newRequest(current.folderId)
   reqStore.setName((current.name || t.value.untitledRequest) + t.value.copySuffix)
   reqStore.setMethod(current.method)
@@ -316,11 +322,13 @@ async function duplicateCurrentRequest() {
   message.success(t.value.requestDuplicated)
 }
 
-// Any open modal/drawer owns the keyboard — global shortcuts (Cmd+Enter
-// send, Cmd+S save) must not fire behind an overlay.
+// Any open modal/drawer/popover owns the keyboard — global shortcuts
+// (Cmd+Enter send, Cmd+S save) must not fire behind an overlay.
 function overlayOpen(): boolean {
   return !!document.querySelector(
-    '.ant-modal-wrap:not([style*="display: none"]), .ant-drawer-open'
+    '.ant-modal-wrap:not([style*="display: none"]), .ant-drawer-open, ' +
+    '.ant-popover:not(.ant-popover-hidden), .ant-dropdown:not(.ant-dropdown-hidden), ' +
+    '.ant-select-dropdown:not(.ant-select-dropdown-hidden)'
   )
 }
 
