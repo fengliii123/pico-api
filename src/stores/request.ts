@@ -468,8 +468,12 @@ export const useRequestStore = defineStore('request', () => {
     isNew,
     // True when a background unsaved tab holds edits — "New" would destroy
     // them even while a SAVED tab is active, so the editor's discard guard
-    // checks this too.
-    hasCachedNewDraft: computed(() => draftCache.value.has(NEW_REQUEST_KEY)),
+    // checks this too. Reads cacheVersion so Map.set (in-place, invisible
+    // to the shallowRef) still triggers recomputation.
+    hasCachedNewDraft: computed(() => {
+      void cacheVersion.value
+      return draftCache.value.has(NEW_REQUEST_KEY)
+    }),
     tabs,
     cacheVersion,
     newRequest,
