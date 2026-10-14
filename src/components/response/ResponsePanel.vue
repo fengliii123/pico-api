@@ -301,10 +301,10 @@ watch(state, async () => {
   color: var(--text-primary);
 }
 .response-success {
-  padding: 8px 12px;
+  padding: 6px 10px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   overflow: auto;
   flex: 1;
   min-height: 0;

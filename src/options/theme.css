@@ -235,7 +235,7 @@ button:active:not(:disabled),
   /* Text */
   --text-primary: #ececec;
   --text-secondary: #a8a8a8;
-  --text-tertiary: #6f6f6f;
+  --text-tertiary: #8c8c8c;
   --text-on-accent: #08110d;
 
   /* Accent — aligned with --pico-brand (teal) */
@@ -256,7 +256,7 @@ button:active:not(:disabled),
   --status-warning: #d89614;
   --status-warning-bg: #2b2111;
   --status-warning-fg: #d89614;
-  --status-danger: #dc4446;
+  --status-danger: #b93c3e;
   --status-danger-bg: #2a1215;
 
   /* Tab badges */
@@ -281,7 +281,7 @@ button:active:not(:disabled),
   --tag-warning-bg: #2b2111;
   --tag-warning-fg: #d89614;
   --tag-danger-bg: #2a1215;
-  --tag-danger-fg: #dc4446;
+  --tag-danger-fg: #e58a8b;
 
   /* Cookie flags */
   --cookie-httponly-bg: #2b2111;

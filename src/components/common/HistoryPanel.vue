@@ -271,6 +271,13 @@ function close() {
                 {{ t.sendRequestsHistoryHint }}
               </span>
             </template>
+            <Button
+              v-if="searchQuery || methodFilter || statusFilter"
+              size="small"
+              @click="searchQuery = ''; methodFilter = null; statusFilter = null"
+            >
+              {{ t.clearAll }}
+            </Button>
           </Empty>
         </template>
         <template v-else>

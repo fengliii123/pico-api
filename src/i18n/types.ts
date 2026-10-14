@@ -472,5 +472,7 @@ export interface Translations {
   corsSpecPrefix: string
   corsSpecLink: string
   corsSpecSuffix: string
+  filterBody: string
+  recentUrls: string
   copySuffix: string
 }

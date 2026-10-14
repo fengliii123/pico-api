@@ -421,6 +421,8 @@ export const en: Translations = {
   corsSpecPrefix: 'See the',
   corsSpecLink: 'W3C XMLHttpRequest spec',
   corsSpecSuffix: 'for details.',
+  filterBody: 'Filter lines…',
+  recentUrls: 'Recent URLs',
   copySuffix: ' (Copy)'
 }
 

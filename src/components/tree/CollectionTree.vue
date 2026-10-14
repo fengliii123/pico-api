@@ -834,6 +834,21 @@ async function onAntdDrop(info: any) {
   border: 1px solid currentColor;
   line-height: 14px;
   background: rgba(0, 0, 0, 0.02);
+  /* Fixed box so DELETE/GET/OPTIONS all occupy the same width — method
+     tags align vertically across rows instead of zig-zagging. */
+  width: 52px;
+  text-align: center;
+  box-sizing: border-box;
+}
+/* Folder rows get a subtle surface so folder-vs-request hierarchy reads
+   at a glance, even before the caret/icon is noticed. */
+.collection-tree :deep(.folder-row) {
+  padding: 2px 6px;
+  border-radius: var(--radius-base);
+  background: var(--bg-muted);
+}
+.collection-tree :deep(.ant-tree-treenode) {
+  margin-bottom: 1px;
 }
 .collection-tree :deep(.tree-row-url) {
   flex: 1 1 auto;

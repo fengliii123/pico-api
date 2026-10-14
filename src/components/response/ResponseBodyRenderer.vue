@@ -7,7 +7,7 @@
 // including image/PDF object URLs (revoked on result change / unmount).
 
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { Button, Tooltip, message } from 'ant-design-vue'
+import { Button, Tooltip, Input, message } from 'ant-design-vue'
 import { CopyOutlined, DownloadOutlined, BranchesOutlined, FileTextOutlined } from '@ant-design/icons-vue'
 import JsonTreeView from '@/components/common/JsonTreeView.vue'
 import { classify } from '@/core/mime'
@@ -59,7 +59,25 @@ const bodyText = computed(() => {
   return raw
 })
 
-const bodyHtml = computed(() => kind.value === 'json' ? highlightJsonLike(bodyText.value) : '')
+// Line filter for the text views (pretty/raw). Tree view has its own search.
+const bodyFilter = ref('')
+const isTextView = computed(() => kind.value === 'json' || kind.value === 'xml' || kind.value === 'html')
+const filteredBodyText = computed(() => {
+  const q = bodyFilter.value.trim().toLowerCase()
+  if (!q) return bodyText.value
+  return bodyText.value
+    .split('\n')
+    .filter(l => l.toLowerCase().includes(q))
+    .join('\n')
+})
+const filterStats = computed(() => {
+  const q = bodyFilter.value.trim()
+  if (!q) return null
+  const total = bodyText.value.split('\n').length
+  const matched = filteredBodyText.value ? filteredBodyText.value.split('\n').length : 0
+  return { matched, total }
+})
+const bodyHtml = computed(() => kind.value === 'json' ? highlightJsonLike(filteredBodyText.value) : '')
 
 async function copyBody() {
   try {
@@ -186,6 +204,9 @@ onBeforeUnmount(() => {
         <span v-else-if="renderTruncated" class="code-size-warn" :title="t.truncated">
           {{ t.truncated }}
         </span>
+        <span v-if="filterStats" class="code-size-warn">
+          {{ filterStats.matched }}/{{ filterStats.total }}
+        </span>
       </div>
       <div class="code-toolbar-actions">
         <template v-if="kind === 'json' || kind === 'xml' || kind === 'html'">
@@ -218,6 +239,14 @@ onBeforeUnmount(() => {
               </button>
             </Tooltip>
           </div>
+          <Input
+            v-if="isTextView && viewMode !== 'tree'"
+            v-model:value="bodyFilter"
+            size="small"
+            allow-clear
+            :placeholder="t.filterBody"
+            class="code-filter"
+          />
         </template>
         <Button size="small" class="copy-btn" @click="copyBody">
           <template #icon><CopyOutlined /></template>
@@ -238,7 +267,7 @@ onBeforeUnmount(() => {
         class="code-block code-json"
         v-html="bodyHtml"
       />
-      <pre v-else class="code-block">{{ bodyText }}</pre>
+      <pre v-else class="code-block">{{ filteredBodyText }}</pre>
     </template>
   </div>
 </template>
@@ -304,7 +333,7 @@ onBeforeUnmount(() => {
 .code-wrap {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-2);
   height: 100%;
   min-height: 0;
 }
@@ -312,8 +341,9 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--space-2);
   font-size: var(--fs-sm);
+  flex: 0 0 auto;
 }
 .code-toolbar-info {
   display: inline-flex;
@@ -374,6 +404,12 @@ onBeforeUnmount(() => {
 }
 
 .copy-btn.ant-btn-sm {
+  font-size: var(--fs-xs);
+}
+.code-filter {
+  width: 160px;
+}
+.code-filter.ant-input-sm {
   font-size: var(--fs-xs);
 }
 

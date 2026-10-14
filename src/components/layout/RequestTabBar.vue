@@ -4,13 +4,16 @@
 // dirty via draftCache); this component is a thin render + dispatch layer.
 // The bar only appears once a second tab exists — with a single request
 // open it would just duplicate the editor's name input.
-import { computed } from 'vue'
+import { computed, h, ref } from 'vue'
+import { Modal, Input, message } from 'ant-design-vue'
 import { CloseOutlined } from '@ant-design/icons-vue'
 import { useRequestStore, NEW_REQUEST_KEY } from '@/stores/request'
+import { useCollectionStore } from '@/stores/collection'
 import { useI18n } from '@/i18n/useI18n'
 
 const { t } = useI18n()
 const reqStore = useRequestStore()
+const collStore = useCollectionStore()
 
 const activeKey = computed(() => reqStore.draft.id ?? NEW_REQUEST_KEY)
 
@@ -30,6 +33,47 @@ function onAuxClick(e: MouseEvent, key: string) {
     reqStore.closeTab(key)
   }
 }
+
+// Double-click rename. Saved tabs rename through the collection store
+// (conflict-checked); the unsaved tab renames only while it's active —
+// background unsaved names live in frozen cache snapshots we don't touch.
+function onDblClick(key: string) {
+  const label = reqStore.tabLabel(key)
+  if (key === NEW_REQUEST_KEY) {
+    if (key !== activeKey.value) return
+    const val = ref(label)
+    Modal.confirm({
+      title: t.value.renameRequestTitle,
+      content: () => h(Input, { value: val.value, 'onUpdate:value': (v: string) => { val.value = v } }),
+      onOk: () => {
+        const name = val.value.trim()
+        if (!name) { message.warning(t.value.nameRequired); return Promise.reject() }
+        reqStore.setName(name)
+      }
+    })
+    return
+  }
+  const r = collStore.requestsById.get(key)
+  if (!r) return
+  const val = ref(label)
+  Modal.confirm({
+    title: t.value.renameRequestTitle,
+    content: () => h(Input, { value: val.value, 'onUpdate:value': (v: string) => { val.value = v } }),
+    onOk: async () => {
+      const name = val.value.trim()
+      if (!name) { message.warning(t.value.nameRequired); return Promise.reject() }
+      const prev = r.name
+      r.name = name
+      try {
+        await collStore.updateRequest(r)
+      } catch (e: any) {
+        r.name = prev
+        message.error(e?.message ?? t.value.couldNotRenameRequest)
+        throw e
+      }
+    }
+  })
+}
 </script>
 
 <template>
@@ -44,6 +88,7 @@ function onAuxClick(e: MouseEvent, key: string) {
       :title="item.label"
       @click="reqStore.activateTab(item.key)"
       @auxclick="(e: MouseEvent) => onAuxClick(e, item.key)"
+      @dblclick="onDblClick(item.key)"
     >
       <span class="req-tab-name">{{ item.label }}</span>
       <span v-if="item.dirty" class="req-tab-dirty" />

@@ -421,6 +421,8 @@ export const zhCN: Translations = {
   corsSpecPrefix: '详见',
   corsSpecLink: 'W3C XMLHttpRequest 规范',
   corsSpecSuffix: '。',
+  filterBody: '过滤行…',
+  recentUrls: '最近使用',
   copySuffix: '（副本）'
 }
 

@@ -17,6 +17,7 @@ import { processHeaders } from '@/core/headers'
 import { deepClone } from '@/utils/clone'
 import { escapeHtml } from '@/utils/highlight'
 import { useRequestExecution } from '@/composables/useRequestExecution'
+import { history as historyDb } from '@/db'
 import type { KeyValueRow, FormDataRow, RequestBody, HttpMethod, SavedRequest, AuthConfig, RequestScripts, RequestSettings } from '@/core/types'
 import { useI18n } from '@/i18n/useI18n'
 import { fmt } from '@/i18n'
@@ -100,6 +101,37 @@ const urlHighlightHtml = computed(() => {
   return escapeHtml(raw).replace(URL_VAR_RE, (_, name: string) =>
     `<span class="url-var">{{${name}}}</span>`)
 })
+
+// Recent URLs: pulling from history on focus gives a cheap "frequently
+// used" picker without a separate favorites feature. Deduped, newest first.
+const recentUrlsOpen = ref(false)
+const recentUrls = ref<string[]>([])
+async function openRecentUrls() {
+  try {
+    const entries = await historyDb.list(100)
+    const seen = new Set<string>()
+    const urls: string[] = []
+    for (const e of entries) {
+      const u = (e.url ?? '').trim()
+      if (!u || seen.has(u)) continue
+      seen.add(u)
+      urls.push(u)
+      if (urls.length >= 8) break
+    }
+    recentUrls.value = urls
+    recentUrlsOpen.value = true
+  } catch {
+    recentUrlsOpen.value = false
+  }
+}
+function pickRecentUrl(u: string) {
+  reqStore.setUrl(u)
+  recentUrlsOpen.value = false
+}
+function onUrlEnter() {
+  recentUrlsOpen.value = false
+  void send()
+}
 
 //
 // processHeaders() returns a "dropped" list that includes things the
@@ -414,8 +446,21 @@ defineExpose({ send })
           placeholder="https://api.example.com/path"
           class="url-input"
           @update:value="(v: string) => reqStore.setUrl(v)"
-          @press-enter="send"
+          @press-enter="onUrlEnter"
+          @focus="openRecentUrls"
+          @blur="recentUrlsOpen = false"
         />
+        <div v-if="recentUrlsOpen && recentUrls.length > 0" class="url-recent-dropdown">
+          <div class="url-recent-title">{{ t.recentUrls }}</div>
+          <div
+            v-for="u in recentUrls"
+            :key="u"
+            class="url-recent-item"
+            @mousedown.prevent="pickRecentUrl(u)"
+          >
+            {{ u }}
+          </div>
+        </div>
       </div>
       <Button
         v-if="isSending || isStreaming"
@@ -631,6 +676,44 @@ defineExpose({ send })
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--pico-brand-glow);
 }
+/* Recent-URLs dropdown — sits right under the URL bar while the input is
+   focused. mousedown.prevent on items keeps the input's blur from closing
+   the panel before the click registers. */
+.url-recent-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  background: var(--bg-base);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-2);
+  max-height: 280px;
+  overflow: auto;
+}
+.url-recent-title {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  padding: var(--space-1) var(--space-3);
+}
+.url-recent-item {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-base);
+  font-family: 'SF Mono', 'Menlo', ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.url-recent-item:hover {
+  background: var(--accent-soft-bg);
+  color: var(--accent-soft-fg);
+}
+
 .url-input-overlay {
   position: absolute;
   inset: 0;
