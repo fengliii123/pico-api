@@ -8,7 +8,8 @@ import {
   SafetyCertificateOutlined,
   ClockCircleOutlined,
   MinusCircleOutlined,
-  QuestionCircleOutlined
+  QuestionCircleOutlined,
+  ReloadOutlined
 } from '@ant-design/icons-vue'
 import type { ResponseState } from '@/stores/response'
 import { useI18n } from '@/i18n/useI18n'
@@ -18,6 +19,8 @@ const props = defineProps<{
   state: Extract<ResponseState, { kind: 'error' }>
   currentUrl: string
 }>()
+
+const emit = defineEmits<{ (e: 'retry'): void }>()
 
 const errorIcon = computed(() => {
   switch (props.state.errorKind) {
@@ -42,13 +45,13 @@ const errorIcon = computed(() => {
     <div class="error-hints">
       <div v-if="state.errorKind === 'cors'" class="error-hint">
         <strong>{{ t.whyThisHappens }}</strong> {{ t.corsHintDetail }}
-        See the
+        {{ t.corsSpecPrefix }}
         <a
           href="https://www.w3.org/TR/XMLHttpRequest/#the-status-attribute"
           target="_blank"
           rel="noreferrer noopener"
-        >W3C XMLHttpRequest spec</a>
-        for details.
+        >{{ t.corsSpecLink }}</a>
+        {{ t.corsSpecSuffix }}
         <div class="error-actions">
           <AButton
             v-if="currentUrl"
@@ -82,6 +85,16 @@ const errorIcon = computed(() => {
         <summary>{{ t.originalError }}</summary>
         <code>{{ state.originalMessage }}</code>
       </details>
+      <div class="error-actions">
+        <AButton
+          v-if="state.errorKind !== 'aborted'"
+          size="small"
+          @click="emit('retry')"
+        >
+          <template #icon><ReloadOutlined /></template>
+          {{ t.retry }}
+        </AButton>
+      </div>
     </div>
   </div>
 </template>

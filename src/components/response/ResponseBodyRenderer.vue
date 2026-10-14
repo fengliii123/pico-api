@@ -109,12 +109,17 @@ watch(() => props.result, (r) => {
   } else if (k === 'pdf') {
     pdfUrl.value = URL.createObjectURL(r.body.blob)
   } else if (k === 'json') {
-    try {
-      const parsed = JSON.parse(r.body.text)
-      parsedJson.value = parsed
-      prettyJson.value = JSON.stringify(parsed, null, 2)
-    } catch {
-      prettyJson.value = r.body.text
+    // Skip the synchronous parse+stringify on huge bodies — multi-MB JSON
+    // freezes the main thread. Pretty is already disabled above this size,
+    // and canShowTree stays false so the Tree toggle hides.
+    if (r.body.text.length <= PRETTY_LIMIT) {
+      try {
+        const parsed = JSON.parse(r.body.text)
+        parsedJson.value = parsed
+        prettyJson.value = JSON.stringify(parsed, null, 2)
+      } catch {
+        prettyJson.value = r.body.text
+      }
     }
   } else if (k === 'xml' || k === 'html') {
     try {
@@ -220,7 +225,7 @@ onBeforeUnmount(() => {
         </Button>
         <Button size="small" class="copy-btn" @click="downloadBody">
           <template #icon><DownloadOutlined /></template>
-          Save
+          {{ t.save }}
         </Button>
       </div>
     </div>

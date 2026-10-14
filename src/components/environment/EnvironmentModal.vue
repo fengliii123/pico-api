@@ -277,7 +277,7 @@ const KEY_HINT = '{{key}}'
                 >
                   <Button size="small">
                     <template #icon><UploadOutlined /></template>
-                    Import
+                    {{ t.import }}
                   </Button>
                 </Upload>
                 <Button size="small" @click="exportVariables">
@@ -326,7 +326,7 @@ const KEY_HINT = '{{key}}'
                 >
                   <Button size="small">
                     <template #icon><UploadOutlined /></template>
-                    Import
+                    {{ t.import }}
                   </Button>
                 </Upload>
                 <Button size="small" @click="exportVariables">

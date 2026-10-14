@@ -405,10 +405,14 @@ async function askRenameRequest(requestId: string) {
       return clash ? t.value.requestNameExists : null
     },
     onOk: async (name) => {
+      const prev = r.name
+      r.name = name
       try {
-        r.name = name
         await collStore.updateRequest(r)
       } catch (e: any) {
+        // updateRequest validates before persisting — restore the old name
+        // so the tree doesn't keep showing a rename the DB rejected.
+        r.name = prev
         message.error(e?.message ?? t.value.couldNotRenameRequest)
         throw e
       }
@@ -432,12 +436,17 @@ async function duplicateRequest(requestId: string) {
   const r = collStore.requestsById.get(requestId)
   if (!r) return
   await collStore.createRequest(r.folderId, {
-    name: r.name + ' Copy',
+    name: r.name + t.value.copySuffix,
     method: r.method,
     url: r.url,
     headers: r.headers.map(h => ({ ...h })),
     params: r.params.map(p => ({ ...p })),
-    body: deepClone(r.body)
+    body: deepClone(r.body),
+    // Carry auth/scripts/settings over — a duplicate that silently loses
+    // credentials or scripts is a "looks the same but isn't" trap.
+    auth: r.auth ? deepClone(r.auth) : { type: 'none' },
+    scripts: r.scripts ? deepClone(r.scripts) : { preRequest: '', postResponse: '' },
+    settings: { ...r.settings }
   })
 }
 
@@ -564,11 +573,30 @@ async function onAntdDrop(info: any) {
       isDragFolder,
       targetKey,
       dropToGap: !!info.dropToGap,
-      dropPosition: Number(info.dropPosition ?? 0)
+      dropPosition: Number(info.dropPosition ?? 0),
+      nodeIndex: Number(String(info.node?.pos ?? '0').split('-').pop() ?? 0)
     },
     {
       folderParent: id => collStore.foldersById.get(id)?.parentId,
-      requestFolder: id => collStore.requestsById.get(id)?.folderId
+      requestFolder: id => collStore.requestsById.get(id)?.folderId,
+      nextFolderSibling: id => {
+        const f = collStore.foldersById.get(id)
+        if (!f) return null
+        const siblings = collStore.folderList
+          .filter(x => x.parentId === f.parentId)
+          .sort((a, b) => a.order - b.order)
+        const idx = siblings.findIndex(x => x.id === id)
+        return idx >= 0 && idx + 1 < siblings.length ? siblings[idx + 1].id : null
+      },
+      nextRequestSibling: id => {
+        const r = collStore.requestsById.get(id)
+        if (!r) return null
+        const siblings = collStore.requestList
+          .filter(x => x.folderId === r.folderId)
+          .sort((a, b) => a.order - b.order)
+        const idx = siblings.findIndex(x => x.id === id)
+        return idx >= 0 && idx + 1 < siblings.length ? siblings[idx + 1].id : null
+      }
     }
   )
   if (!placement) return

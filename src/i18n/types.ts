@@ -458,4 +458,19 @@ export interface Translations {
   errCouldNotNormalize: string
   errRequestFailed: string
   errTimeout: string
+
+  untitledRequest: string
+  unfiled: string
+  unknownFolder: string
+  newBtnTitle: string
+  saveToFolderTitle: string
+  discardDraftTitle: string
+  discardDraftContent: string
+  discard: string
+  saveFailed: string
+  retry: string
+  corsSpecPrefix: string
+  corsSpecLink: string
+  corsSpecSuffix: string
+  copySuffix: string
 }

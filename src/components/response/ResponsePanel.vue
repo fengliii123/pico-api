@@ -196,6 +196,7 @@ watch(state, async () => {
       v-else-if="state.kind === 'error'"
       :state="state"
       :current-url="currentUrl"
+      @retry="emit('resend')"
     />
 
     <div

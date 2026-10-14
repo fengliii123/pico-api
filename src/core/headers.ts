@@ -32,8 +32,10 @@ export interface ProcessedHeaders {
 }
 
 // Convert KeyValueRow[] into a fetch-compatible headers record.
-// Empty-value rows are skipped. Banned headers are dropped (with reason).
-// Auto-injects Content-Type for urlencoded body mode.
+// Empty-key rows are skipped. A header with a key but an empty value is
+// legal HTTP (e.g. sentinel/signature headers) and IS sent. Banned headers
+// are dropped (with reason). Auto-injects Content-Type for urlencoded body
+// mode.
 export function processHeaders(
   rows: KeyValueRow[],
   body: RequestBody
@@ -49,19 +51,19 @@ export function processHeaders(
     if (!row.enabled) continue
     const key = row.key.trim()
     if (!key) continue
-    if (row.value === '' || row.value == null) continue
+    const value = row.value ?? ''
 
     const lower = key.toLowerCase()
     if (BANNED_HEADERS.has(lower)) {
-      dropped.push({ key, value: row.value, reason: 'dropped-by-browser:browser-bans-this-header' })
+      dropped.push({ key, value, reason: 'dropped-by-browser:browser-bans-this-header' })
       continue
     }
     if (seen.has(lower)) {
-      dropped.push({ key, value: row.value, reason: 'dropped:duplicate-case-insensitive' })
+      dropped.push({ key, value, reason: 'dropped:duplicate-case-insensitive' })
       continue
     }
     seen.add(lower)
-    headers[key] = row.value
+    headers[key] = value
   }
 
   // Auto Content-Type by body mode (only when the user hasn't set one).

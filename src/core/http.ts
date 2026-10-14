@@ -439,7 +439,10 @@ async function executeStreamingViaBridge(
   })
 
   port.onDisconnect.addListener(() => {
-    if (!aborted && !fullText) {
+    // Reject on ANY un-aborted disconnect. Previously a disconnect after
+    // partial chunks left the promise pending forever (UI stuck streaming);
+    // rejecting is a no-op if the promise already resolved via 'done'.
+    if (!aborted) {
       reject({ message: 'Connection lost', errorKind: 'unknown', originalMessage: 'Connection lost' })
     }
   })
@@ -512,14 +515,28 @@ async function executeDirect(
     const timeout = req.settings?.timeout ?? 0
     let timeoutId: ReturnType<typeof setTimeout> | undefined
     let timeoutCtrl: AbortController | undefined
+    let timedOut = false
     if (timeout > 0) {
       timeoutCtrl = new AbortController()
-      timeoutId = setTimeout(() => timeoutCtrl!.abort(), timeout)
+      timeoutId = setTimeout(() => {
+        timedOut = true
+        timeoutCtrl!.abort()
+      }, timeout)
     }
     const combined = mergeAbortSignals(opts.signal, timeoutCtrl?.signal)
     if (combined) init.signal = combined
 
-    const res = await fetch(req.url, init)
+    let res: Response
+    try {
+      res = await fetch(req.url, init)
+    } catch (e: any) {
+      // Both a timeout and Cancel surface as AbortError — distinguish by
+      // who aborted (mirrors executeStreamingDirect below).
+      if (timedOut || (e?.name === 'AbortError' && !opts.signal?.aborted)) {
+        throw { message: 'Request timed out', errorKind: 'timeout' } satisfies ResponseError
+      }
+      throw e
+    }
     if (timeoutId) clearTimeout(timeoutId)
     const blob = await res.blob()
     const t1 = performance.now()
@@ -615,7 +632,14 @@ async function executeStreamingDirect(
     if (timedOut || (e?.name === 'AbortError' && !rest.signal?.aborted)) {
       throw { message: 'Request timed out', errorKind: 'timeout' } satisfies ResponseError
     }
-    throw e
+    // Classify like the non-streaming path — without this the panel would
+    // show the raw "Failed to fetch" instead of a CORS/connect hint.
+    const cls = classifyFetchError(e, req.url)
+    throw {
+      message: cls.message,
+      errorKind: cls.kind,
+      originalMessage: String(e?.message ?? 'Network error')
+    } satisfies ResponseError
   }
   if (timeoutId) clearTimeout(timeoutId)
 
@@ -639,7 +663,9 @@ async function executeStreamingDirect(
 
       chunkCount++
       const remaining = maxBytes > 0 ? maxBytes - received : Infinity
-      if (value.byteLength >= remaining) {
+      // Strictly greater: a chunk that exactly fills the remaining budget
+      // is NOT truncated (off-by-one flagged otherwise-truncated streams).
+      if (value.byteLength > remaining) {
         // The cap falls inside this chunk: keep only the bytes within the
         // cap and flush the decoder (non-stream mode) so a multi-byte
         // UTF-8 sequence never gets cut mid-character.

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Button, Input, Tabs, Drawer, Segmented, message } from 'ant-design-vue'
+import { Button, Input, Tabs, Drawer, Segmented, message, Modal } from 'ant-design-vue'
 import { CloudUploadOutlined, SendOutlined, PlusOutlined, FolderOpenOutlined, CopyOutlined, MoreOutlined } from '@ant-design/icons-vue'
 import MethodDropdown from './MethodDropdown.vue'
 import KeyValueTable from './KeyValueTable.vue'
@@ -208,7 +208,8 @@ async function saveRequest() {
       const name = msg.replace('folderNameConflict:', '')
       message.error(fmt(t.value.nameAlreadyExists, { name }))
     } else {
-      message.error(msg || t.value.error)
+      console.error('saveRequest failed:', e)
+      message.error(t.value.saveFailed)
     }
   }
 }
@@ -230,9 +231,9 @@ async function onFolderPicked(folderId: string | null) {
 }
 
 function folderDisplay(folderId: string | null): string {
-  if (!folderId) return '— Unfiled —'
+  if (!folderId) return t.value.unfiled
   const f = collStore.foldersById.get(folderId)
-  return f ? f.name : '— Unknown —'
+  return f ? f.name : t.value.unknownFolder
 }
 
 // "Save to..." — explicitly re-prompts for the destination folder even if
@@ -242,7 +243,24 @@ async function saveToOtherFolder() {
   folderPickerOpen.value = true
 }
 
-function newRequest() {
+// "New" wipes the unsaved-draft slot — confirm before destroying real edits.
+function confirmDiscardDraft(): Promise<boolean> {
+  if (!(reqStore.isNew && reqStore.dirty)) return Promise.resolve(true)
+  return new Promise(resolve => {
+    Modal.confirm({
+      title: t.value.discardDraftTitle,
+      content: t.value.discardDraftContent,
+      okText: t.value.discard,
+      okButtonProps: { danger: true },
+      cancelText: t.value.cancel,
+      onOk: () => resolve(true),
+      onCancel: () => resolve(false)
+    })
+  })
+}
+
+async function newRequest() {
+  if (!(await confirmDiscardDraft())) return
   reqStore.newRequest(draft.value.folderId)
 }
 
@@ -279,7 +297,7 @@ async function duplicateCurrentRequest() {
     return
   }
   reqStore.newRequest(current.folderId)
-  reqStore.setName((current.name || 'Untitled') + ' (Copy)')
+  reqStore.setName((current.name || t.value.untitledRequest) + t.value.copySuffix)
   reqStore.setMethod(current.method)
   reqStore.setUrl(current.url)
   reqStore.setHeaders(current.headers.map(h => ({ ...h })))
@@ -298,7 +316,16 @@ async function duplicateCurrentRequest() {
   message.success(t.value.requestDuplicated)
 }
 
+// Any open modal/drawer owns the keyboard — global shortcuts (Cmd+Enter
+// send, Cmd+S save) must not fire behind an overlay.
+function overlayOpen(): boolean {
+  return !!document.querySelector(
+    '.ant-modal-wrap:not([style*="display: none"]), .ant-drawer-open'
+  )
+}
+
 function onKeyDown(e: KeyboardEvent) {
+  if (overlayOpen()) return
   if ((e.metaKey || e.ctrlKey) && (e.key === 's' || e.key === 'S')) {
     e.preventDefault()
     void saveRequest()
@@ -337,11 +364,11 @@ defineExpose({ send })
       />
       <span v-if="reqStore.dirty" class="dirty-dot" :title="t.unsavedChanges" />
       <div class="topbar-group">
-        <Button @click="newRequest" title="New (clears draft)">
+        <Button @click="newRequest" :title="t.newBtnTitle">
           <template #icon><PlusOutlined /></template>
           {{ t.new }}
         </Button>
-        <Button @click="duplicateCurrentRequest" title="Duplicate (⌘D)" class="icon-btn">
+        <Button @click="duplicateCurrentRequest" :title="`${t.duplicate} (⌘D)`" class="icon-btn">
           <template #icon><CopyOutlined /></template>
         </Button>
       </div>
@@ -355,7 +382,7 @@ defineExpose({ send })
           :current-folder-id="draft.folderId"
           @select="onFolderPicked"
         >
-          <Button @click="saveToOtherFolder" title="Save to a different folder">
+          <Button @click="saveToOtherFolder" :title="t.saveToFolderTitle">
             <template #icon><FolderOpenOutlined /></template>
             {{ folderDisplay(draft.folderId) }}
           </Button>

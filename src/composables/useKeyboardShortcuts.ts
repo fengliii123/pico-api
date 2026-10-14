@@ -30,6 +30,12 @@ function getCombo(e: KeyboardEvent): string {
   return parts.join('+')
 }
 
+function overlayOpen(): boolean {
+  return !!document.querySelector(
+    '.ant-modal-wrap:not([style*="display: none"]), .ant-drawer-open'
+  )
+}
+
 function onKeyDown(e: KeyboardEvent) {
   // Don't intercept when typing in input/textarea/select elements
   const target = e.target as HTMLElement
@@ -59,13 +65,8 @@ function onKeyDown(e: KeyboardEvent) {
     return
   }
 
-  // Cmd+D / Ctrl+D: Duplicate current request
-  if (combo === 'meta+d' || combo === 'ctrl+d') {
-    e.preventDefault()
-    const duplicate = shortcuts.value.find(s => s.id === 'duplicate-request')
-    if (duplicate?.enabled !== false) duplicate?.action()
-    return
-  }
+  // An open modal/drawer owns the screen — don't stack panels behind it.
+  if (overlayOpen()) return
 
   // Cmd+Shift+K / Ctrl+Shift+K: Quick switch environment
   if (combo === 'meta+shift+k' || combo === 'ctrl+shift+k') {

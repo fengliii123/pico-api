@@ -406,6 +406,21 @@ export const en: Translations = {
   errInvalidRequest: 'Invalid request: {message}',
   errCouldNotNormalize: 'could not normalize',
   errRequestFailed: 'Request failed',
-  errTimeout: 'Request timed out'
+  errTimeout: 'Request timed out',
+
+  untitledRequest: 'Untitled Request',
+  unfiled: '— Unfiled —',
+  unknownFolder: '— Unknown —',
+  newBtnTitle: 'New (clears draft)',
+  saveToFolderTitle: 'Save to a different folder',
+  discardDraftTitle: 'Discard unsaved draft?',
+  discardDraftContent: 'The current draft has unsaved changes. Starting a new request will lose them.',
+  discard: 'Discard',
+  saveFailed: 'Save failed — please try again',
+  retry: 'Retry',
+  corsSpecPrefix: 'See the',
+  corsSpecLink: 'W3C XMLHttpRequest spec',
+  corsSpecSuffix: 'for details.',
+  copySuffix: ' (Copy)'
 }
 

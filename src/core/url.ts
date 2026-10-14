@@ -59,7 +59,12 @@ export function extractParamsFromUrl(baseUrl: string): { url: string; params: Ke
     ? 'https://' + trimmed
     : trimmed
 
-  const qIdx = scheme.indexOf('?')
+  // A fragment starts at the first '#'. A '?' inside the fragment is part
+  // of the fragment, not a query separator ("x.com/a#f?b=1" has NO query),
+  // so only a '?' before any '#' starts a query string.
+  const hashIdx = scheme.indexOf('#')
+  const beforeHash = hashIdx >= 0 ? scheme.slice(0, hashIdx) : scheme
+  const qIdx = beforeHash.indexOf('?')
   if (qIdx === -1) {
     return { url: trimmed, params: [] }
   }

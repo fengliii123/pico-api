@@ -158,20 +158,25 @@ export interface DropPlacement {
 // AntD contract:
 //   info.dropToGap = true  → drop between siblings of info.node
 //   info.dropToGap = false → drop "inside" info.node (only valid for folders)
-//   info.dropPosition      → -1: above, 1: below (gap mode)
+//   info.dropPosition is the ABSOLUTE insert index among the node's siblings;
+//   subtract the node's own index (last segment of info.node.pos) to get the
+//   relative position: -1 above the node, +1 below it.
 export function resolveDropPlacement(
   input: {
     isDragFolder: boolean
     targetKey: string
     dropToGap: boolean
     dropPosition: number
+    nodeIndex: number
   },
   lookups: {
     folderParent: (folderId: string) => string | null | undefined
     requestFolder: (requestId: string) => string | null | undefined
+    nextFolderSibling: (folderId: string) => string | null
+    nextRequestSibling: (requestId: string) => string | null
   }
 ): DropPlacement | null {
-  const { isDragFolder, targetKey, dropToGap, dropPosition } = input
+  const { isDragFolder, targetKey, dropToGap, dropPosition, nodeIndex } = input
 
   // Special case: a request dropped onto a folder ALWAYS goes inside the
   // folder, regardless of what Antd thinks the drop edge was. Antd
@@ -194,7 +199,11 @@ export function resolveDropPlacement(
     return { targetParentId: parent, beforeId: null, atEnd: true }
   }
 
-  // Gap mode: drop as sibling of info.node, before or after it.
+  // Gap mode: drop as a sibling of info.node — above or below it. The
+  // beforeId we emit is consumed by the dragged item's OWN sibling list
+  // (folders vs requests are ordered separately), so it only carries a
+  // same-kind id; cross-kind gaps (e.g. a request dropped next to a
+  // folder) fall back to atEnd, which is where the two lists join anyway.
   let targetParentId: string | null
   if (isFolderKey(targetKey)) {
     targetParentId = lookups.folderParent(folderIdFromKey(targetKey)) ?? null
@@ -203,9 +212,26 @@ export function resolveDropPlacement(
     if (parent === undefined) return null
     targetParentId = parent
   }
-  if (dropPosition < 0) {
-    const beforeId = isFolderKey(targetKey) ? folderIdFromKey(targetKey) : requestIdFromKey(targetKey)
-    return { targetParentId, beforeId, atEnd: false }
+
+  const rel = dropPosition - nodeIndex
+  const targetIsFolder = isFolderKey(targetKey)
+
+  if (rel < 0) {
+    // Above the target node.
+    if (isDragFolder === targetIsFolder) {
+      const beforeId = targetIsFolder ? folderIdFromKey(targetKey) : requestIdFromKey(targetKey)
+      return { targetParentId, beforeId, atEnd: false }
+    }
+    return { targetParentId, beforeId: null, atEnd: true }
+  }
+
+  // Below the target node: insert after it, i.e. before the next same-kind
+  // sibling (or at the end when the target is the last one).
+  if (isDragFolder === targetIsFolder) {
+    const beforeId = targetIsFolder
+      ? lookups.nextFolderSibling(folderIdFromKey(targetKey))
+      : lookups.nextRequestSibling(requestIdFromKey(targetKey))
+    return { targetParentId, beforeId, atEnd: beforeId === null }
   }
   return { targetParentId, beforeId: null, atEnd: true }
 }

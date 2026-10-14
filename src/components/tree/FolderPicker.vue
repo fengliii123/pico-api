@@ -63,7 +63,7 @@ function flatten(nodes: ReturnType<typeof buildTree>, depth: number, out: FlatIt
 
 const flatFolders = computed<FlatItem[]>(() => {
   const list: FlatItem[] = [
-    { key: 'folder:__root__', folderId: null, name: '— Unfiled (root) —', depth: 0 }
+    { key: 'folder:__root__', folderId: null, name: t.value.unfiledRoot, depth: 0 }
   ]
   flatten(treeData.value, 0, list)
   return list

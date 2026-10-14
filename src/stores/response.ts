@@ -63,15 +63,20 @@ export const useResponseStore = defineStore('response', () => {
     activeId.value = id
   }
 
-  function setResult(result: ResponseResult, testResults?: ScriptTestResult[], scriptLogs?: ScriptLogs) {
-    const key = activeId.value ?? NEW_REQUEST_KEY
+  // Setters accept an explicit `slotKey` so a send can pin its target at
+  // send time. Without it, a slow request A whose response lands after the
+  // user switched to request B would write A's result into B's slot (the
+  // setters would read the *current* activeId instead of the one A started
+  // under).
+  function setResult(result: ResponseResult, testResults?: ScriptTestResult[], scriptLogs?: ScriptLogs, slotKey?: string) {
+    const key = slotKey ?? activeId.value ?? NEW_REQUEST_KEY
     const newCache = new Map(cache.value)
     newCache.set(key, { kind: 'success', result, testResults, scriptLogs })
     cache.value = newCache
   }
 
-  function setError(err: ResponseError, testResults?: ScriptTestResult[], scriptLogs?: ScriptLogs) {
-    const key = activeId.value ?? NEW_REQUEST_KEY
+  function setError(err: ResponseError, testResults?: ScriptTestResult[], scriptLogs?: ScriptLogs, slotKey?: string) {
+    const key = slotKey ?? activeId.value ?? NEW_REQUEST_KEY
     const s: ResponseState = { kind: 'error', ...err, testResults, scriptLogs }
     const newCache = new Map(cache.value)
     newCache.set(key, s)
@@ -79,8 +84,8 @@ export const useResponseStore = defineStore('response', () => {
   }
 
   // Streaming state management
-  function setStreaming(mime: string) {
-    const key = activeId.value ?? NEW_REQUEST_KEY
+  function setStreaming(mime: string, slotKey?: string) {
+    const key = slotKey ?? activeId.value ?? NEW_REQUEST_KEY
     const newCache = new Map(cache.value)
     newCache.set(key, { kind: 'streaming', chunks: [], mime })
     cache.value = newCache
@@ -91,8 +96,8 @@ export const useResponseStore = defineStore('response', () => {
   // object + Map. The new state object is what makes the `state` computed
   // propagate (a mutated-in-place array alone never would), while the push
   // keeps each append O(1).
-  function appendStreamChunk(text: string) {
-    const key = activeId.value ?? NEW_REQUEST_KEY
+  function appendStreamChunk(text: string, slotKey?: string) {
+    const key = slotKey ?? activeId.value ?? NEW_REQUEST_KEY
     const current = cache.value.get(key)
     if (current?.kind === 'streaming') {
       current.chunks.push({ text, timestamp: Date.now() })
@@ -102,8 +107,8 @@ export const useResponseStore = defineStore('response', () => {
     }
   }
 
-  function finishStreaming(result: ResponseResult & { isStreaming: boolean }, testResults?: ScriptTestResult[], scriptLogs?: ScriptLogs) {
-    const key = activeId.value ?? NEW_REQUEST_KEY
+  function finishStreaming(result: ResponseResult & { isStreaming: boolean }, testResults?: ScriptTestResult[], scriptLogs?: ScriptLogs, slotKey?: string) {
+    const key = slotKey ?? activeId.value ?? NEW_REQUEST_KEY
     const current = cache.value.get(key)
     const newCache = new Map(cache.value)
 
@@ -128,7 +133,11 @@ export const useResponseStore = defineStore('response', () => {
   // Use clearAll() to wipe everything (e.g. on extension reload).
   function reset() {
     const key = activeId.value ?? NEW_REQUEST_KEY
-    cache.value.delete(key)
+    // The cache is a shallowRef — an in-place delete would never trigger
+    // the `state` computed, leaving a stale loading/error on screen.
+    const newCache = new Map(cache.value)
+    newCache.delete(key)
+    cache.value = newCache
   }
 
   function clearAll() {

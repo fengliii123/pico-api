@@ -7,6 +7,7 @@ import { defaultRequestSettings } from '@/core/defaults'
 import { uid } from '@/utils/id'
 import { deepClone } from '@/utils/clone'
 import { parseQueryParams, urlWithParams } from '@/core/url'
+import { useI18n } from '@/i18n/useI18n'
 import { useResponseStore } from './response'
 import { useCollectionStore } from './collection'
 
@@ -19,7 +20,7 @@ function emptyDraft(): DraftRequest {
   return {
     id: null,
     folderId: null,
-    name: 'Untitled Request',
+    name: useI18n().t.value.untitledRequest,
     method: 'GET',
     url: '',
     // Pre-seed one empty row in each tab so the user has a visible target
@@ -125,6 +126,9 @@ export const useRequestStore = defineStore('request', () => {
   // mutations don't trigger reactivity on their own, and the tab bar
   // derives per-tab dirty flags from cache membership.
   const cacheVersion = ref(0)
+  // Body parked while the method is GET/HEAD/OPTIONS. Cleared whenever a
+  // different request is loaded so a stash never leaks across drafts.
+  let stashedBody: RequestBody | null = null
 
   function cacheKeyFor(id: string | null): string {
     return id ?? NEW_REQUEST_KEY
@@ -159,6 +163,7 @@ export const useRequestStore = defineStore('request', () => {
     // away and back through other requests.
     draftCache.value.delete(NEW_REQUEST_KEY)
     cacheVersion.value++
+    stashedBody = null
     draft.value = { ...emptyDraft(), folderId }
     dirty.value = false
     // Switch the response cache slot to the new-request sentinel so
@@ -183,6 +188,7 @@ export const useRequestStore = defineStore('request', () => {
     // any prior NEW_REQUEST_KEY content is stale.
     draftCache.value.delete(NEW_REQUEST_KEY)
     cacheVersion.value++
+    stashedBody = null
     draft.value = {
       id: null,
       folderId: d.folderId ?? null,
@@ -214,6 +220,7 @@ export const useRequestStore = defineStore('request', () => {
     }
     ensureTab(r.id)
     persistTabs()
+    stashedBody = null
     // Restore un-saved edits if we have a cached draft for this id. The
     // cached snapshot is by definition newer than the IndexedDB row (it was
     // written by markEdited since the last save), so it wins on switch-back.
@@ -254,21 +261,24 @@ export const useRequestStore = defineStore('request', () => {
     // actually allowed to go on the wire.
     //
     // - GET/HEAD/OPTIONS: spec says no body. If the user happens to have
-    //   one, downgrade to 'none' so they don't think it will be sent.
+    //   one, stash it and downgrade to 'none' so they don't think it will
+    //   be sent. A POST → GET → POST round trip restores the typed body.
     // - POST/PUT/PATCH: these carry a body. If the current draft body is
-    //   'none' (i.e. fresh or just downgraded), seed a sensible default
-    //   (raw+JSON — the most common shape).
+    //   'none' (i.e. fresh or just downgraded), restore the stash if any,
+    //   otherwise seed a sensible default (raw+JSON — the most common shape).
     if (METHODS_WITHOUT_BODY.has(m)) {
       if (draft.value.body.mode !== 'none') {
+        stashedBody = draft.value.body
         draft.value.body = { mode: 'none' }
       }
     } else {
       if (draft.value.body.mode === 'none') {
-        draft.value.body = {
+        draft.value.body = stashedBody ?? {
           mode: 'raw',
           rawType: 'json',
           rawText: ''
         }
+        stashedBody = null
       }
     }
 
@@ -276,16 +286,16 @@ export const useRequestStore = defineStore('request', () => {
   }
 
   function setUrl(url: string) {
+    // Bidirectional sync: a URL WITH a query string is the source of truth —
+    // parse it into the Params tab. Clearing params only when the user just
+    // REMOVED the query (prev had '?', new doesn't) keeps mid-typing states
+    // (e.g. retyping the host with the '?' not yet re-entered) from wiping
+    // the Params tab. Send time re-merges enabled params either way.
+    const hadQuery = draft.value.url.includes('?')
     draft.value.url = url
-
-    // Bidirectional sync: if the URL contains a query string, parse and
-    // sync params from it. If the URL has no query string at all, clear
-    // params to keep the UI and URL in sync — otherwise a URL like
-    // "https://example.com" with params `[{foo:1}]` would show a mismatch.
-    const parsed = parseQueryParams(url)
     if (url.includes('?')) {
-      draft.value.params = parsed
-    } else {
+      draft.value.params = parseQueryParams(url)
+    } else if (hadQuery) {
       draft.value.params = []
     }
 

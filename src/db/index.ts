@@ -56,6 +56,23 @@ export function openDB(): Promise<IDBDatabase> {
       // Fire-and-forget; doesn't gate readiness.
       migrateLegacyIfNeeded().catch(() => { /* swallow — best effort */ })
     }
+    // An upgrade can be blocked indefinitely by an old page still holding
+    // a connection. Without this handler the open stays pending forever and
+    // every store's `loaded` never flips — the UI just hangs blank. After a
+    // grace period, reject with an actionable message and un-pin the cached
+    // promise so the next openDB() (e.g. after the user closes the old tab
+    // and reloads) re-attempts cleanly.
+    req.onblocked = () => {
+      const stuck = dbPromise
+      setTimeout(() => {
+        if (dbPromise !== stuck) return
+        dbPromise = null
+        reject(new Error(
+          `IndexedDB "${DB_NAME}" upgrade is blocked by another open Pico API tab/window. ` +
+          `Close other Pico API pages and reload this one.`
+        ))
+      }, 5000)
+    }
     req.onerror = () => {
       // IndexedDB disallows opening at a lower version than what's on
       // disk. This happens when an older build runs over data left by a

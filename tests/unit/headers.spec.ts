@@ -39,12 +39,12 @@ describe('processHeaders: existing behavior unchanged', () => {
     expect(dropped[0]?.reason).toBe('dropped-by-browser:browser-bans-this-header')
   })
 
-  it('skips disabled rows and empty keys/values', () => {
+  it('skips disabled rows and empty keys; empty-value headers ARE sent', () => {
     const { headers } = processHeaders(
       [row('X-A', '1', false), row('', '2'), row('X-B', '')],
       noBody
     )
-    expect(headers).toEqual({})
+    expect(headers).toEqual({ 'X-B': '' })
   })
 
   it('auto-injects Content-Type for raw JSON body when user set none', () => {

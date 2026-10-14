@@ -6,7 +6,7 @@
 // mounting the whole component tree.
 
 import { message } from 'ant-design-vue'
-import { useRequestStore } from '@/stores/request'
+import { useRequestStore, NEW_REQUEST_KEY } from '@/stores/request'
 import { useResponseStore } from '@/stores/response'
 import { useSettingsStore } from '@/stores/settings'
 import { useEnvironmentStore } from '@/stores/environment'
@@ -137,47 +137,46 @@ export function useRequestExecution() {
     }
   }
 
-  // Current send's abort signal — set at the top of send() so the
-  // pm.sendRequest executor below can be cancelled with the main request.
-  let currentSignal: AbortSignal | null = null
-
-  // Executor handed to pm.sendRequest: a plain GET through the same
+  // Executor factory handed to pm.sendRequest: a plain GET through the same
   // normalize/execute pipeline the Send button uses, so it respects the
   // extension bridge (no CORS) and dev-mode direct fetch alike. Cookie
-  // forwarding follows the same setting as the main request, and Cancel
-  // aborts sub-requests too.
-  const sendRequestExecutor: SendRequestExecutor = async (url) => {
-    const normalized = normalize({
-      id: null,
-      folderId: null,
-      name: 'pm.sendRequest',
-      method: 'GET',
-      url,
-      headers: [],
-      params: [],
-      body: { mode: 'none' },
-      auth: { type: 'none' },
-      scripts: { preRequest: '', postResponse: '' },
-      settings: defaultRequestSettings()
-    } as DraftRequest)
-    const res = await execute(normalized, {
-      signal: currentSignal ?? undefined,
-      sendBrowserCookies: settingsStore.sendBrowserCookies
-    })
-    const headers: Record<string, string> = {}
-    for (const [k, v] of res.headers) headers[k.toLowerCase()] = v
-    return {
-      status: res.status,
-      statusText: res.statusText,
-      headers,
-      bodyText: res.body.text,
-      time: res.time,
-      size: res.body.size
+  // forwarding follows the same setting as the main request. The signal is
+  // bound per-send (closure) — a shared mutable signal would let a newer
+  // send hijack or kill an older send's still-running sub-requests.
+  function makeSendRequestExecutor(signal: AbortSignal | null): SendRequestExecutor {
+    return async (url) => {
+      const normalized = normalize({
+        id: null,
+        folderId: null,
+        name: 'pm.sendRequest',
+        method: 'GET',
+        url,
+        headers: [],
+        params: [],
+        body: { mode: 'none' },
+        auth: { type: 'none' },
+        scripts: { preRequest: '', postResponse: '' },
+        settings: defaultRequestSettings()
+      } as DraftRequest)
+      const res = await execute(normalized, {
+        signal: signal ?? undefined,
+        sendBrowserCookies: settingsStore.sendBrowserCookies
+      })
+      const headers: Record<string, string> = {}
+      for (const [k, v] of res.headers) headers[k.toLowerCase()] = v
+      return {
+        status: res.status,
+        statusText: res.statusText,
+        headers,
+        bodyText: res.body.text,
+        time: res.time,
+        size: res.body.size
+      }
     }
   }
 
   // Shared ScriptRunContext assembly for both script phases.
-  function scriptContext(normalized: NormalizedRequest, response: ResponseResult | null) {
+  function scriptContext(normalized: NormalizedRequest, response: ResponseResult | null, sendRequest: SendRequestExecutor) {
     return {
       requestUrl: normalized.url,
       requestMethod: normalized.method,
@@ -186,7 +185,7 @@ export function useRequestExecution() {
       response,
       envVars: envStore.activeVariables,
       globals: envStore.globals.variables,
-      sendRequest: sendRequestExecutor
+      sendRequest
     }
   }
 
@@ -197,10 +196,11 @@ export function useRequestExecution() {
   // scopes); local scope is replayed by the caller via withLocalVars.
   async function runPreRequest(
     script: string,
-    normalized: NormalizedRequest
+    normalized: NormalizedRequest,
+    sendRequest: SendRequestExecutor
   ): Promise<{ logs: string[]; renormalize: boolean; requestPatch: Partial<NormalizedRequest> | null; varChanges: VariableChange[] }> {
     if (!script) return { logs: [], renormalize: false, requestPatch: null, varChanges: [] }
-    const result = await runScript(script, scriptContext(normalized, null))
+    const result = await runScript(script, scriptContext(normalized, null, sendRequest))
     await persistVarChanges(result.varChanges)
     return {
       logs: result.logs,
@@ -216,10 +216,11 @@ export function useRequestExecution() {
   async function runPostResponse(
     script: string,
     normalized: NormalizedRequest,
-    response: ResponseResult | null
+    response: ResponseResult | null,
+    sendRequest: SendRequestExecutor
   ): Promise<{ logs: string[]; testResults: TestResult[] }> {
     if (!script) return { logs: [], testResults: [] }
-    const result = await runScript(script, scriptContext(normalized, response))
+    const result = await runScript(script, scriptContext(normalized, response, sendRequest))
     return { logs: result.logs, testResults: result.tests }
   }
 
@@ -228,11 +229,12 @@ export function useRequestExecution() {
   // so they never mask the original request error.
   async function runPostResponseOnError(
     script: string,
-    normalized: NormalizedRequest
+    normalized: NormalizedRequest,
+    sendRequest: SendRequestExecutor
   ): Promise<{ logs: string[]; testResults: TestResult[] }> {
     if (!script) return { logs: [], testResults: [] }
     try {
-      return await runPostResponse(script, normalized, null)
+      return await runPostResponse(script, normalized, null, sendRequest)
     } catch {
       return { logs: [], testResults: [] }
     }
@@ -274,7 +276,12 @@ export function useRequestExecution() {
     inflightAbort?.abort()
     inflightAbort = new AbortController()
     const { signal } = inflightAbort
-    currentSignal = signal
+
+    // Pin the response slot for the whole send: if the user switches to
+    // another request while this one is in flight, the result must still
+    // land in THIS request's cache — not whatever is active when it returns.
+    const slotKey = draft.id ?? NEW_REQUEST_KEY
+    const sendRequest = makeSendRequestExecutor(signal)
 
     // Pre-validate URL before scripts run (so scripts don't modify an
     // invalid URL). Variables are NOT fully checked yet — the pre-request
@@ -287,14 +294,14 @@ export function useRequestExecution() {
       resStore.setError({
         message: fmt(t.value.errInvalidRequest, { message: e?.message ?? t.value.errCouldNotNormalize }),
         errorKind: 'connect'
-      })
+      }, undefined, undefined, slotKey)
       return
     }
 
     const validateNormalizedUrl = (label: string): boolean => {
       const err = assertHttpUrl(normalized.url, label)
       if (err) {
-        resStore.setError({ message: err, errorKind: 'connect' })
+        resStore.setError({ message: err, errorKind: 'connect' }, undefined, undefined, slotKey)
         return false
       }
       return true
@@ -302,7 +309,7 @@ export function useRequestExecution() {
     if (!validateNormalizedUrl('URL')) return
 
     try {
-      const preRequest = await runPreRequest(draft.scripts?.preRequest ?? '', normalized)
+      const preRequest = await runPreRequest(draft.scripts?.preRequest ?? '', normalized, sendRequest)
       const activeWithLocal = withLocalVars(envStore.activeVariables, preRequest.varChanges)
       if (preRequest.renormalize) {
         normalized = normalize(draft, activeWithLocal, envStore.globals.variables)
@@ -330,7 +337,7 @@ export function useRequestExecution() {
         resStore.setError({
           message: fmt(t.value.errUnresolvedVariables, { names, envName }),
           errorKind: 'connect'
-        })
+        }, undefined, undefined, slotKey)
         return
       }
 
@@ -338,10 +345,10 @@ export function useRequestExecution() {
       // normalize), so the Accept lookup must be case-insensitive.
       const acceptValue =
         Object.entries(normalized.headers).find(([k]) => k.toLowerCase() === 'accept')?.[1] ?? ''
-      resStore.setStreaming(acceptValue)
+      resStore.setStreaming(acceptValue, slotKey)
 
       const onChunk: StreamChunkHandler = (text) => {
-        resStore.appendStreamChunk(text)
+        resStore.appendStreamChunk(text, slotKey)
       }
 
       const result = await executeStreaming(normalized, {
@@ -350,13 +357,13 @@ export function useRequestExecution() {
         onChunk
       })
 
-      const post = await runPostResponse(draft.scripts?.postResponse ?? '', normalized, result)
+      const post = await runPostResponse(draft.scripts?.postResponse ?? '', normalized, result, sendRequest)
 
       // Use server-reported streaming flag
       if (result.isStreaming) {
-        resStore.finishStreaming(result, post.testResults, { preRequest: preRequest.logs, postResponse: post.logs })
+        resStore.finishStreaming(result, post.testResults, { preRequest: preRequest.logs, postResponse: post.logs }, slotKey)
       } else {
-        resStore.setResult(result, post.testResults, { preRequest: preRequest.logs, postResponse: post.logs })
+        resStore.setResult(result, post.testResults, { preRequest: preRequest.logs, postResponse: post.logs }, slotKey)
       }
       await recordHistory(result.status, result.time, result.body.size)
 
@@ -365,20 +372,20 @@ export function useRequestExecution() {
       showRatingPromptIfDue()
     } catch (e: any) {
       if (e?.errorKind === 'aborted' || signal.aborted) {
-        resStore.setError({ message: t.value.requestCancelled, errorKind: 'aborted' })
+        resStore.setError({ message: t.value.requestCancelled, errorKind: 'aborted' }, undefined, undefined, slotKey)
         return
       }
       const { logs: postLogs, testResults } =
-        await runPostResponseOnError(draft.scripts?.postResponse ?? '', normalized)
+        await runPostResponseOnError(draft.scripts?.postResponse ?? '', normalized, sendRequest)
 
       // Forward whatever shape we got so the panel can render the
       // right hint. Timeouts carry a raw English message from the fetch
       // layer — localize it here.
       if (e?.errorKind) {
         const err = e.errorKind === 'timeout' ? { ...e, message: t.value.errTimeout } : e
-        resStore.setError(err, testResults, { preRequest: [], postResponse: postLogs })
+        resStore.setError(err, testResults, { preRequest: [], postResponse: postLogs }, slotKey)
       } else {
-        resStore.setError({ message: e?.message ?? t.value.errRequestFailed, errorKind: 'unknown' }, testResults, { preRequest: [], postResponse: postLogs })
+        resStore.setError({ message: e?.message ?? t.value.errRequestFailed, errorKind: 'unknown' }, testResults, { preRequest: [], postResponse: postLogs }, slotKey)
       }
     } finally {
       if (inflightAbort?.signal === signal) inflightAbort = null

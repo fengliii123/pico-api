@@ -126,6 +126,8 @@ async function runFetch(payload: FetchPayload): Promise<{ ok: true; result: Resp
   const t0 = performance.now()
   const cancelCtrl = new AbortController()
   inflightFetches.set(payload.id, cancelCtrl)
+  let timeoutId: ReturnType<typeof setTimeout> | undefined
+  let timedOut = false
   try {
     const headers = await resolveHeaders(payload.req, payload.options?.sendBrowserCookies)
 
@@ -143,17 +145,39 @@ async function runFetch(payload: FetchPayload): Promise<{ ok: true; result: Resp
     }
 
     const timeout = payload.req.settings?.timeout ?? 0
-    let timeoutId: ReturnType<typeof setTimeout> | undefined
     let timeoutCtrl: AbortController | undefined
     if (timeout > 0) {
       timeoutCtrl = new AbortController()
-      timeoutId = setTimeout(() => timeoutCtrl!.abort(), timeout)
+      timeoutId = setTimeout(() => {
+        timedOut = true
+        timeoutCtrl!.abort()
+      }, timeout)
     }
     const combined = mergeAbortSignals(cancelCtrl.signal, timeoutCtrl?.signal)
     if (combined) init.signal = combined
 
     const res = await fetch(payload.req.url, init)
-    if (timeoutId) clearTimeout(timeoutId)
+
+    // redirect:'manual' in a service worker yields an opaqueredirect-
+    // filtered response (status 0, empty headers/body). We can't recover
+    // the 3xx + Location (the browser hides it), so at least label the
+    // result honestly instead of showing a bare "0".
+    if (res.type === 'opaqueredirect') {
+      return {
+        ok: true,
+        result: {
+          status: res.status,
+          statusText: 'Redirect (manual) — the browser hides 3xx details; turn on Follow Redirects to see the final response',
+          headers: [],
+          text: '',
+          bodyBase64: '',
+          size: 0,
+          time: Math.round(performance.now() - t0),
+          mime: ''
+        }
+      }
+    }
+
     const blob = await res.blob()
 
     const { finalBlob, text, bodyBase64 } = await readCappedResponseBodyForBridge(
@@ -194,16 +218,24 @@ async function runFetch(payload: FetchPayload): Promise<{ ok: true; result: Resp
     }
     return { ok: true, result }
   } catch (e: any) {
-    const err: ResponseError = {
-      message: e?.name === 'AbortError'
-        ? 'Request aborted'
-        : (e?.message ?? 'Network error'),
-      errorKind: e?.name === 'AbortError' ? 'aborted' : 'unknown',
-      cause: e,
-      originalMessage: String(e?.message ?? 'Network error')
-    }
+    const err: ResponseError = timedOut
+      ? {
+          message: 'Request timed out',
+          errorKind: 'timeout',
+          cause: e,
+          originalMessage: 'Request timed out'
+        }
+      : {
+          message: e?.name === 'AbortError'
+            ? 'Request aborted'
+            : (e?.message ?? 'Network error'),
+          errorKind: e?.name === 'AbortError' ? 'aborted' : 'unknown',
+          cause: e,
+          originalMessage: String(e?.message ?? 'Network error')
+        }
     return { ok: false, error: err }
   } finally {
+    if (timeoutId) clearTimeout(timeoutId)
     inflightFetches.delete(payload.id)
   }
 }
@@ -263,7 +295,9 @@ async function runStreamingFetch(
         if (done) break
 
         const remaining = maxBytes > 0 ? maxBytes - received : Infinity
-        if (value.byteLength >= remaining) {
+        // Strictly greater: a chunk that exactly fills the remaining budget
+        // is NOT truncated (off-by-one flagged otherwise-truncated streams).
+        if (value.byteLength > remaining) {
           // The cap falls inside this chunk: forward only the bytes within
           // the cap and flush the decoder (non-stream mode) so a multi-byte
           // UTF-8 sequence never gets cut mid-character.

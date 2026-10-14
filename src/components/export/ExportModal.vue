@@ -53,9 +53,9 @@ const scopeOptions = computed(() => [
 ])
 
 const folderLabel = computed(() => {
-  if (!folderId.value) return '— Unfiled —'
+  if (!folderId.value) return t.value.unfiled
   const f = collStore.foldersById.get(folderId.value)
-  return f ? f.name : '— Unknown —'
+  return f ? f.name : t.value.unknownFolder
 })
 
 const exportedJson = computed(() => {

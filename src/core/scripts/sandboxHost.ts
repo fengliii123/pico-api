@@ -145,6 +145,9 @@ function ensureSandboxFrame(): Promise<HTMLIFrameElement> {
     const readyTimer = setTimeout(() => {
       readyResolve = null
       pendingFrame = null
+      // Clear iframeReady so the next runScriptViaSandbox retries the boot
+      // instead of awaiting this rejected promise forever.
+      iframeReady = null
       frame.remove()
       reject(new Error('sandbox iframe ready timeout'))
     }, SANDBOX_TIMEOUT_MS)
@@ -160,6 +163,7 @@ function ensureSandboxFrame(): Promise<HTMLIFrameElement> {
       clearTimeout(readyTimer)
       readyResolve = null
       pendingFrame = null
+      iframeReady = null
       frame.remove()
       reject(new Error('sandbox iframe failed to load'))
     }

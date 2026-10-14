@@ -406,6 +406,21 @@ export const zhCN: Translations = {
   errInvalidRequest: '无效的请求：{message}',
   errCouldNotNormalize: '无法规范化',
   errRequestFailed: '请求失败',
-  errTimeout: '请求超时'
+  errTimeout: '请求超时',
+
+  untitledRequest: '未命名请求',
+  unfiled: '— 未归档 —',
+  unknownFolder: '— 未知 —',
+  newBtnTitle: '新建（清空当前草稿）',
+  saveToFolderTitle: '保存到其他文件夹',
+  discardDraftTitle: '放弃未保存的草稿？',
+  discardDraftContent: '当前草稿有未保存的修改，新建请求将丢失这些修改。',
+  discard: '放弃',
+  saveFailed: '保存失败，请重试',
+  retry: '重试',
+  corsSpecPrefix: '详见',
+  corsSpecLink: 'W3C XMLHttpRequest 规范',
+  corsSpecSuffix: '。',
+  copySuffix: '（副本）'
 }
 
